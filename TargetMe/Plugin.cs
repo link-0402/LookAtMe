@@ -3,6 +3,8 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using TargetMe.Game;
+using TargetMe.Integrations;
 using TargetMe.Tracking;
 using TargetMe.UI;
 
@@ -19,6 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     public Configuration Config { get; }
     public ViewerTracker Tracker { get; }
     public ViewerWindow ViewerWindow { get; }
+    public ViewerContextMenu ContextMenu { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -27,15 +30,18 @@ public sealed class Plugin : IDalamudPlugin
 
         Tracker = new ViewerTracker();
 
+        var actions = new PlayerActions(Tracker);
+        var moodles = new MoodlesIpc();
+        var moodlesPopup = new MoodlesPopup(moodles, Tracker);
+        ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup);
+
         ViewerWindow = new ViewerWindow(Config, Tracker)
         {
-            OnLeftClick = record =>
-            {
-                if (Tracker.Resolve(record) is { } pc)
-                    Services.TargetManager.Target = pc;
-            },
+            OnLeftClick = actions.Target,
+            DrawContextMenu = ContextMenu.Draw,
         };
         windowSystem.AddWindow(ViewerWindow);
+        windowSystem.AddWindow(moodlesPopup);
 
         Services.PluginInterface.UiBuilder.Draw += Draw;
         Services.PluginInterface.UiBuilder.OpenMainUi += ToggleViewerWindow;
