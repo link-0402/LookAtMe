@@ -12,4 +12,16 @@ public static class ViewerList
            .ThenByDescending(v => v.LastSeen)
            .Take(Math.Max(cap, 1))
            .ToList();
+
+    /// <summary>Another row has the same name (a player from a different world), so the world must be shown.</summary>
+    public static bool HasNamesake(IReadOnlyList<ViewerRecord> rows, ViewerRecord record)
+    {
+        foreach (var other in rows)
+        {
+            if (!ReferenceEquals(other, record) && string.Equals(other.Name, record.Name, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
 }

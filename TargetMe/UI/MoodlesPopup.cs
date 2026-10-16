@@ -40,7 +40,7 @@ public sealed partial class MoodlesPopup : Window
             return;
         }
 
-        IReadOnlyList<MoodleStatus> statuses = moodles.Get(pc);
+        IReadOnlyList<MoodleStatus> statuses = moodles.Get(record, pc);
         if (statuses.Count == 0)
         {
             ImGui.TextDisabled("No Moodles.");

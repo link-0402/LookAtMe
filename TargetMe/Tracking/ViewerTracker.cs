@@ -11,11 +11,15 @@ namespace TargetMe.Tracking;
 public sealed class ViewerTracker : IDisposable
 {
     private static readonly TimeSpan LoadedRefreshInterval = TimeSpan.FromMilliseconds(100);
+    // Finding someone who came back with a new object id needs their name, so that scan runs less often.
+    private static readonly TimeSpan NameScanInterval = TimeSpan.FromSeconds(1);
 
     private readonly Dictionary<string, ViewerRecord> records = new();
-    private readonly HashSet<string> targetingNow = new();
-    private readonly HashSet<string> loadedNow = new();
+    private readonly Dictionary<ulong, ViewerRecord> byObjectId = new();
+    private readonly HashSet<ViewerRecord> targetingNow = new();
+    private readonly HashSet<ViewerRecord> loadedNow = new();
     private DateTime lastLoadedRefresh = DateTime.MinValue;
+    private DateTime lastNameScan = DateTime.MinValue;
 
     /// <summary>Raised when a player goes from not targeting the local player to targeting them.</summary>
     public event Action<ViewerRecord>? ViewerStarted;
@@ -38,7 +42,11 @@ public sealed class ViewerTracker : IDisposable
 
     private void OnLogout(int type, int code) => Clear();
 
-    public void Clear() => records.Clear();
+    public void Clear()
+    {
+        records.Clear();
+        byObjectId.Clear();
+    }
 
     public void Update()
     {
@@ -48,10 +56,16 @@ public sealed class ViewerTracker : IDisposable
 
         var now = DateTime.Now;
         var refreshLoaded = now - lastLoadedRefresh >= LoadedRefreshInterval;
+        var scanByName = false;
         if (refreshLoaded)
         {
             lastLoadedRefresh = now;
             loadedNow.Clear();
+            if (now - lastNameScan >= NameScanInterval && AnyAway())
+            {
+                lastNameScan = now;
+                scanByName = true;
+            }
         }
 
         targetingNow.Clear();
@@ -63,16 +77,14 @@ public sealed class ViewerTracker : IDisposable
                 continue;
 
             var isTargetingMe = pc.TargetObjectId == localId;
-            // Building the key allocates, so only do it when this player matters this frame.
-            if (!isTargetingMe && !(refreshLoaded && records.Count > 0))
+            if (!isTargetingMe && !refreshLoaded)
                 continue;
 
-            var key = ViewerRecord.MakeKey(pc.Name.TextValue, pc.HomeWorld.RowId);
-            ViewerRecord? record;
+            var record = MatchById(pc);
             if (isTargetingMe)
             {
-                record = GetOrCreate(key, pc, now);
-                targetingNow.Add(key);
+                record ??= GetOrCreate(pc, now);
+                targetingNow.Add(record);
                 record.LastSeen = now;
                 if (!record.IsTargeting)
                 {
@@ -80,21 +92,22 @@ public sealed class ViewerTracker : IDisposable
                     ViewerStarted?.Invoke(record);
                 }
             }
-            else if (!records.TryGetValue(key, out record))
+            else if (record == null)
             {
-                continue;
+                // Building the key allocates, so only do it on the slower scan.
+                if (!scanByName || !records.TryGetValue(ViewerRecord.MakeKey(pc.Name.TextValue, pc.HomeWorld.RowId), out record))
+                    continue;
             }
 
-            loadedNow.Add(key);
-            record.IsLoaded = true;
-            record.GameObjectId = pc.GameObjectId;
+            loadedNow.Add(record);
+            Attach(record, pc);
         }
 
         foreach (var record in records.Values)
         {
-            if (!targetingNow.Contains(record.Key))
+            if (!targetingNow.Contains(record))
                 record.IsTargeting = false;
-            if (refreshLoaded && !loadedNow.Contains(record.Key))
+            if (refreshLoaded && !loadedNow.Contains(record))
                 record.IsLoaded = false;
         }
     }
@@ -103,10 +116,9 @@ public sealed class ViewerTracker : IDisposable
     public void AddEmote(IPlayerCharacter instigator, ushort emoteId)
     {
         var now = DateTime.Now;
-        var record = GetOrCreate(ViewerRecord.MakeKey(instigator.Name.TextValue, instigator.HomeWorld.RowId), instigator, now);
+        var record = MatchById(instigator) ?? GetOrCreate(instigator, now);
         record.LastSeen = now;
-        record.IsLoaded = true;
-        record.GameObjectId = instigator.GameObjectId;
+        Attach(record, instigator);
         record.Emotes.Add(emoteId, now);
     }
 
@@ -123,8 +135,39 @@ public sealed class ViewerTracker : IDisposable
             : null;
     }
 
-    private ViewerRecord GetOrCreate(string key, IPlayerCharacter pc, DateTime now)
+    /// <summary>The record last seen with this player's object id, if it's still the same player.</summary>
+    private ViewerRecord? MatchById(IPlayerCharacter pc) =>
+        byObjectId.TryGetValue(pc.GameObjectId, out var record)
+        && record.WorldId == pc.HomeWorld.RowId
+        && record.Name == pc.Name.TextValue
+            ? record
+            : null;
+
+    private void Attach(ViewerRecord record, IPlayerCharacter pc)
     {
+        if (record.GameObjectId != pc.GameObjectId
+            && byObjectId.TryGetValue(record.GameObjectId, out var previous) && previous == record)
+            byObjectId.Remove(record.GameObjectId);
+
+        record.GameObjectId = pc.GameObjectId;
+        record.IsLoaded = true;
+        byObjectId[pc.GameObjectId] = record;
+    }
+
+    private bool AnyAway()
+    {
+        foreach (var record in records.Values)
+        {
+            if (!record.IsLoaded)
+                return true;
+        }
+
+        return false;
+    }
+
+    private ViewerRecord GetOrCreate(IPlayerCharacter pc, DateTime now)
+    {
+        var key = ViewerRecord.MakeKey(pc.Name.TextValue, pc.HomeWorld.RowId);
         if (records.TryGetValue(key, out var existing))
             return existing;
 

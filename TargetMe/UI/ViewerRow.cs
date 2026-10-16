@@ -12,12 +12,13 @@ public static class ViewerRow
     private const float NameIndent = 18f;
     private const float TimePadding = 4f;
 
+    /// <param name="showWorld">Another row has the same name, so the world is shown (dimmed) after the name.</param>
     /// <param name="interactive">
     /// False while the window is unlocked for moving: the row then takes no clicks, so dragging
     /// on it moves the window.
     /// </param>
     /// <returns>Whether the row is hovered or its context menu is open.</returns>
-    public static bool Draw(ViewerRecord record, DateTime now, Configuration config, bool interactive,
+    public static bool Draw(ViewerRecord record, bool showWorld, DateTime now, Configuration config, bool interactive,
         Action<ViewerRecord>? onLeftClick, Action<ViewerRecord, float>? drawChips, Action<ViewerRecord>? drawMenu)
     {
         ImGui.PushID(record.Key);
@@ -66,10 +67,17 @@ public static class ViewerRow
 
         var nameStart = new Vector2(start.X + NameIndent, textY);
         drawList.AddText(nameStart, colorU32, record.Name);
+        var nameWidth = ImGui.CalcTextSize(record.Name).X;
+
+        if (showWorld && record.WorldName.Length > 0)
+        {
+            var world = $"@{record.WorldName}";
+            drawList.AddText(nameStart with { X = nameStart.X + nameWidth }, ImGui.GetColorU32(color with { W = color.W * 0.5f }), world);
+            nameWidth += ImGui.CalcTextSize(world).X;
+        }
 
         if (drawChips != null)
         {
-            var nameWidth = ImGui.CalcTextSize(record.Name).X;
             ImGui.SetCursorScreenPos(new Vector2(nameStart.X + nameWidth + 6f, start.Y));
             drawChips(record, end.X - timeWidth - TimePadding * 3);
         }

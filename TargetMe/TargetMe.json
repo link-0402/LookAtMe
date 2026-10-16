@@ -2,7 +2,7 @@
     "Author": "Luci",
     "Name": "TargetMe",
     "Punchline": "See who's looking at you.",
-    "Description": "Lists everyone currently targeting your character, set apart from those who looked earlier, with the emotes they aim at you.\nHover a name to light them up in the world, right-click to send a tell, target them or point the camera at them.\nOptional sound alerts, Moodles and CrystalSync support.",
+    "Description": "Lists everyone currently targeting your character, set apart from those who looked earlier, with the emotes they aim at you.\nHover a name to light them up in the world, right-click to send a tell, target them or point the camera at them.\nOptional sound alerts and Moodles support.",
     "InternalName": "TargetMe",
     "ApplicableVersion": "any",
     "Tags": [

@@ -64,10 +64,5 @@ public sealed class Configuration : IPluginConfiguration
     public bool StopOnCombat { get; set; } = true;
     public CameraOnStop CameraOnStop { get; set; } = CameraOnStop.RestorePrevious;
 
-    // CrystalSync
-    public bool CrystalSyncEnabled { get; set; } = false;
-    public Vector4 CrystalSyncColor { get; set; } = new(0.2f, 0.8f, 1f, 1f);
-    public int CrystalSyncCooldownSeconds { get; set; } = 60;
-
     public void Save() => Services.PluginInterface.SavePluginConfig(this);
 }

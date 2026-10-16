@@ -22,11 +22,12 @@ public sealed class SettingsWindow : Window
     private readonly EmoteWatcher emotes;
     private readonly CameraFocus camera;
     private readonly MoodlesIpc moodles;
-    private readonly CrystalSyncBridge crystalSync;
     private readonly FileDialogManager fileDialog = new();
+    private string editedSoundPath = string.Empty;
+    private bool soundPathActive;
 
     public SettingsWindow(Configuration config, SoundAlert sound, EmoteWatcher emotes, CameraFocus camera,
-        MoodlesIpc moodles, CrystalSyncBridge crystalSync)
+        MoodlesIpc moodles)
         : base("TargetMe Settings##TargetMeSettings", ImGuiWindowFlags.NoCollapse)
     {
         this.config = config;
@@ -34,7 +35,6 @@ public sealed class SettingsWindow : Window
         this.emotes = emotes;
         this.camera = camera;
         this.moodles = moodles;
-        this.crystalSync = crystalSync;
         Size = new Vector2(580, 430);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
@@ -161,8 +161,13 @@ public sealed class SettingsWindow : Window
         var path = config.CustomSoundPath ?? string.Empty;
         var buttonWidth = ImGuiComponents.GetIconButtonWithTextWidth(FontAwesomeIcon.FolderOpen, string.Empty);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 2 * (buttonWidth + ImGui.GetStyle().ItemSpacing.X));
-        if (ImGui.InputTextWithHint("##path", "None: uses the game sound", ref path, 1024))
-            Save(() => config.CustomSoundPath = string.IsNullOrWhiteSpace(path) ? null : path.Trim());
+        // Typed edits are kept in the field and saved once it loses focus, not on every keystroke.
+        if (!soundPathActive)
+            editedSoundPath = path;
+        ImGui.InputTextWithHint("##path", "None: uses the game sound", ref editedSoundPath, 1024);
+        soundPathActive = ImGui.IsItemActive();
+        if (ImGui.IsItemDeactivatedAfterEdit())
+            Save(() => config.CustomSoundPath = string.IsNullOrWhiteSpace(editedSoundPath) ? null : editedSoundPath.Trim());
         ImGui.SameLine();
         if (ImGuiComponents.IconButton("##browse", FontAwesomeIcon.FolderOpen))
         {
@@ -226,24 +231,6 @@ public sealed class SettingsWindow : Window
     {
         ImGui.TextUnformatted("Moodles");
         ImGui.TextDisabled(moodles.Available ? "Loaded: \"View Moodles\" shows in the menu for players with statuses." : "Moodles not loaded");
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        ImGui.TextUnformatted("CrystalSync");
-        if (!crystalSync.Available)
-        {
-            ImGui.TextDisabled("CrystalSync not loaded");
-            return;
-        }
-
-        Checkbox("Forward alerts to Discord", config.CrystalSyncEnabled, v => config.CrystalSyncEnabled = v,
-            "Sends a CrystalSync message when someone starts targeting you; replies come back as tells.");
-        Color("Message color", config.CrystalSyncColor, v => config.CrystalSyncColor = v);
-        var cooldown = config.CrystalSyncCooldownSeconds;
-        ImGui.SetNextItemWidth(200);
-        if (ImGui.InputInt("Quiet time per player (seconds)##cs", ref cooldown))
-            Save(() => config.CrystalSyncCooldownSeconds = Math.Clamp(cooldown, 5, 3600));
     }
 
     private static readonly string[] SoundEffectNames =

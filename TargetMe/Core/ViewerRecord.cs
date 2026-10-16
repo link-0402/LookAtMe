@@ -10,7 +10,10 @@ public sealed class ViewerRecord
     public string WorldName { get; set; } = string.Empty;
     public ulong ContentId { get; set; }
 
-    public string Key => MakeKey(Name, WorldId);
+    private string? key;
+
+    // Name and WorldId are init-only, so the key never changes once built.
+    public string Key => key ??= MakeKey(Name, WorldId);
 
     /// <summary>Their target is the local player right now.</summary>
     public bool IsTargeting { get; set; }

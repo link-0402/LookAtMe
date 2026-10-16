@@ -26,7 +26,6 @@ public sealed class Plugin : IDalamudPlugin
     public EmoteWatcher EmoteWatcher { get; }
     public CameraFocus Camera { get; }
     public SoundAlert SoundAlert { get; }
-    public CrystalSyncBridge CrystalSync { get; }
     public SettingsWindow SettingsWindow { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
@@ -55,11 +54,9 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(moodlesPopup);
 
         SoundAlert = new SoundAlert(Config, () => ViewerWindow.IsOpen);
-        CrystalSync = new CrystalSyncBridge(Config);
         Tracker.ViewerStarted += SoundAlert.OnViewerStarted;
-        Tracker.ViewerStarted += CrystalSync.OnViewerStarted;
 
-        SettingsWindow = new SettingsWindow(Config, SoundAlert, EmoteWatcher, Camera, moodles, CrystalSync);
+        SettingsWindow = new SettingsWindow(Config, SoundAlert, EmoteWatcher, Camera, moodles);
         windowSystem.AddWindow(SettingsWindow);
         ViewerWindow.OpenSettings = SettingsWindow.Toggle;
 
@@ -90,7 +87,6 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.Draw -= Draw;
         EmoteWatcher.Dispose();
         Tracker.ViewerStarted -= SoundAlert.OnViewerStarted;
-        Tracker.ViewerStarted -= CrystalSync.OnViewerStarted;
         windowSystem.RemoveAllWindows();
         Tracker.Dispose();
     }

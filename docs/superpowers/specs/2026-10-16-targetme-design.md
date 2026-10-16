@@ -26,7 +26,7 @@ References (read for behaviour only, no code copied):
 | Sound alert: on/off, volume, custom file (wav/mp3/aiff/wma/aac), cooldown per viewer, play while window closed, mute in duties | Same. The default sound is a game sound effect (`<se.1>`–`<se.16>`, selectable) instead of a bundled wav. A custom file is played with NAudio. |
 | Hide window in duties; open window on login | Same |
 | Colour settings | Same, extended for the new UI |
-| CrystalSync Discord forwarding (IPC, colour, cooldown) | Same payload. The settings only appear when the CrystalSync IPC is available. |
+| CrystalSync Discord forwarding (IPC, colour, cooldown) | Not included (removed at the user's request) |
 | `/ptim`, `/ptimconfig` | `/targetme` (toggle window), `/targetme settings`, `/targetme move` (toggle the move/resize lock), `/targetme stop` (stop camera focus) |
 | Hidden "Stalk" feature (hard-disabled in Peeping Tim) | Not included |
 
@@ -121,7 +121,7 @@ TargetMe/
     ViewerRecord.cs          name, world, content id, state, first/last seen, emote chips
     ViewerList.cs            ordering + cap
     EmoteChips.cs            add/refresh/expire/fade maths
-    Cooldowns.cs             per-key cooldown gate (sound, CrystalSync)
+    Cooldowns.cs             per-key cooldown gate (sound)
     RelativeTime.cs          "now / 45s / 3m / 1h"
   Tracking/
     ViewerTracker.cs         per-frame scan, owns ViewerRecords, raises ViewerStarted
@@ -133,7 +133,6 @@ TargetMe/
     ChatSender.cs            send a chat command like typed input (sanitised, length-checked)
   Alerts/
     SoundAlert.cs            game SE or NAudio file, volume, duty mute
-    CrystalSyncBridge.cs     optional IPC
   Integrations/
     MoodlesIpc.cs            optional IPC + status types
   UI/
@@ -152,7 +151,7 @@ TargetMe.Tests/              xUnit, compiles Core/*.cs directly
    `TargetObjectId` is the local player. It creates or updates records, sets `IsTargeting`,
    refreshes `IsLoaded` and the last known object id (throttled to every 100 ms), and raises
    `ViewerStarted` when a player goes from not-targeting to targeting.
-2. `ViewerStarted` → `SoundAlert` and `CrystalSyncBridge`, each gated by `Cooldowns`.
+2. `ViewerStarted` → `SoundAlert`, gated by `Cooldowns`.
 3. Emote hook → `EmoteWatcher` keeps only events whose target is the local player →
    `ViewerTracker.AddEmote(instigator, emoteId)`.
 4. UI draw reads `ViewerList.Visible(records, cap)`; `HighlightOverlay` gets the hovered
@@ -172,7 +171,7 @@ version".
 
 ### Error handling
 
-- Optional IPCs (Moodles, CrystalSync) are probed every time they're used. If one isn't
+- The optional Moodles IPC is probed every time it's used. If one isn't
   there, its feature is hidden and nothing is shown in chat.
 - Every hook is created in a try/catch. A failed hook disables only its feature.
 - Game agent calls (Examine, Adventure Plate, context menu) run on the framework thread and

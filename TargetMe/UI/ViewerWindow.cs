@@ -67,7 +67,8 @@ public sealed class ViewerWindow : Window
         {
             foreach (var row in rows)
             {
-                if (ViewerRow.Draw(row, now, config, !config.WindowUnlocked, OnLeftClick, DrawEmoteChips, DrawContextMenu))
+                if (ViewerRow.Draw(row, ViewerList.HasNamesake(rows, row), now, config, !config.WindowUnlocked,
+                        OnLeftClick, DrawEmoteChips, DrawContextMenu))
                     hovered = row;
             }
         }

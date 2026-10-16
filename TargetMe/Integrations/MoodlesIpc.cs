@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Plugin.Ipc;
+using TargetMe.Core;
 
 namespace TargetMe.Integrations;
 
@@ -44,13 +45,17 @@ public sealed class MoodlesIpc
     private readonly ICallGateSubscriber<IPlayerCharacter, List<(int, Guid, int, string, string, string, long, MoodleType, int, int, uint, Guid, MoodleChainTrigger, string, string, bool)>> getStatuses =
         Services.PluginInterface.GetIpcSubscriber<IPlayerCharacter, List<(int, Guid, int, string, string, string, long, MoodleType, int, int, uint, Guid, MoodleChainTrigger, string, string, bool)>>("Moodles.GetStatusManagerInfoByPlayerV2");
 
+    // The menu and the popup ask every frame; the statuses don't change that fast.
+    private readonly TimedCache<string, IReadOnlyList<MoodleStatus>> cache = new(TimeSpan.FromMilliseconds(250));
+
     public bool Available => getStatuses.HasFunction;
 
-    public IReadOnlyList<MoodleStatus> Get(IPlayerCharacter pc)
-    {
-        if (!Available)
-            return [];
+    /// <summary>The viewer's statuses, reused for up to 250 ms per record.</summary>
+    public IReadOnlyList<MoodleStatus> Get(ViewerRecord record, IPlayerCharacter pc) =>
+        Available ? cache.Get(record.Key, DateTime.Now, () => Query(pc)) : [];
 
+    private IReadOnlyList<MoodleStatus> Query(IPlayerCharacter pc)
+    {
         try
         {
             var result = new List<MoodleStatus>();

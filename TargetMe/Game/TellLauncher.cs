@@ -17,7 +17,7 @@ public static unsafe class TellLauncher
         if (SetContextTellTarget(record))
             return;
 
-        if (!ChatSender.Send($"/tell {record.Name}@{record.WorldName}", out var error))
+        if (!ChatSender.Send(TellCommand.For(record.Name, record.WorldName), out var error))
             Services.Log.Warning($"Couldn't ready a tell to {record.Name}: {error}");
     }
 

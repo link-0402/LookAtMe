@@ -62,7 +62,7 @@ public sealed class ViewerContextMenu
             actions.AdventurePlate(record);
         if (config.MenuGameMenu && ImGui.MenuItem("Game Context Menu", string.Empty, false, loaded))
             actions.GameMenu(record);
-        if (config.MenuMoodles && character != null && moodles.Available && moodles.Get(character).Count > 0
+        if (config.MenuMoodles && character != null && moodles.Available && moodles.Get(record, character).Count > 0
             && ImGui.MenuItem("View Moodles"))
             moodlesPopup.Show(record);
 
