@@ -15,5 +15,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../TargetMe/Core/*.cs" Link="Core/%(Filename).cs" />
   </ItemGroup>
 </Project>
