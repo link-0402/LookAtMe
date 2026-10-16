@@ -13,6 +13,8 @@ public sealed class SoundAlert
 {
     // <se.1> is sound effect 37, <se.16> is 52.
     private const uint FirstChatSoundEffect = 36;
+    // So a crowd targeting you at once plays one sound, not a pile of overlapping ones.
+    private static readonly TimeSpan MinGapBetweenSounds = TimeSpan.FromSeconds(1);
 
     private readonly Configuration config;
     private readonly Func<bool> isWindowOpen;
@@ -29,7 +31,7 @@ public sealed class SoundAlert
         if (!config.SoundEnabled
             || (config.SoundMuteInDuty && Services.Condition[ConditionFlag.BoundByDuty])
             || (!config.SoundWhenWindowClosed && !isWindowOpen())
-            || !cooldowns.TryFire(record.Key, DateTime.Now, TimeSpan.FromSeconds(Math.Clamp(config.SoundCooldownSeconds, 0, 3600))))
+            || !cooldowns.TryFire(record.Key, DateTime.Now, TimeSpan.FromSeconds(Math.Clamp(config.SoundCooldownSeconds, 0, 3600)), MinGapBetweenSounds))
             return;
 
         Play();

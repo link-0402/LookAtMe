@@ -1,4 +1,5 @@
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Conditions;
 using TargetMe.Core;
 using TargetMe.Game;
 using TargetMe.Integrations;
@@ -42,8 +43,13 @@ public sealed class ViewerContextMenu
         if (camera.Available)
         {
             var focused = camera.IsFocused(record);
-            if (ImGui.MenuItem(focused ? "Stop Focusing" : "Focus Camera", string.Empty, false, loaded || focused))
+            var inCombat = Services.Condition[ConditionFlag.InCombat];
+            if (ImGui.MenuItem(focused ? "Stop Focusing" : "Focus Camera", string.Empty, false,
+                    MenuRules.CanFocusCamera(loaded, focused, inCombat, config.StopOnCombat)))
                 camera.Toggle(record);
+            if (!focused && loaded && inCombat && config.StopOnCombat
+                && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Camera focus is set to stop in combat (Camera settings).");
         }
 
         ImGui.Separator();

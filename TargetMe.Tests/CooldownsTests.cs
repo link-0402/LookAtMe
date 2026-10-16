@@ -27,6 +27,29 @@ public class CooldownsTests
     }
 
     [Fact]
+    public void GlobalGapBlocksOtherKeysBriefly()
+    {
+        var cd = new Cooldowns();
+        var gap = TimeSpan.FromSeconds(1);
+
+        Assert.True(cd.TryFire("a", T0, Five, gap));
+        Assert.False(cd.TryFire("b", T0.AddMilliseconds(500), Five, gap));
+        Assert.True(cd.TryFire("b", T0.AddSeconds(1), Five, gap));
+    }
+
+    [Fact]
+    public void GlobalGapBlockDoesNotStartKeyCooldown()
+    {
+        var cd = new Cooldowns();
+        var gap = TimeSpan.FromSeconds(1);
+
+        cd.TryFire("a", T0, Five, gap);
+        cd.TryFire("b", T0.AddMilliseconds(500), Five, gap);
+
+        Assert.True(cd.TryFire("b", T0.AddSeconds(2), Five, gap));
+    }
+
+    [Fact]
     public void BlockedAttemptDoesNotExtendCooldown()
     {
         var cd = new Cooldowns();

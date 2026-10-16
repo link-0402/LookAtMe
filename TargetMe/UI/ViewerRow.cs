@@ -12,8 +12,12 @@ public static class ViewerRow
     private const float NameIndent = 18f;
     private const float TimePadding = 4f;
 
+    /// <param name="interactive">
+    /// False while the window is unlocked for moving: the row then takes no clicks, so dragging
+    /// on it moves the window.
+    /// </param>
     /// <returns>Whether the row is hovered or its context menu is open.</returns>
-    public static bool Draw(ViewerRecord record, DateTime now, Configuration config,
+    public static bool Draw(ViewerRecord record, DateTime now, Configuration config, bool interactive,
         Action<ViewerRecord>? onLeftClick, Action<ViewerRecord, float>? drawChips, Action<ViewerRecord>? drawMenu)
     {
         ImGui.PushID(record.Key);
@@ -27,12 +31,21 @@ public static class ViewerRow
         if (record.IsTargeting)
             drawList.AddRectFilled(start, end, ImGui.GetColorU32(config.ActiveColor with { W = 0.12f }), 4f);
 
-        ImGui.Selectable("##row", false, ImGuiSelectableFlags.AllowItemOverlap, new Vector2(width, height));
-        var hovered = ImGui.IsItemHovered();
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            onLeftClick?.Invoke(record);
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
-            ImGui.OpenPopup("##ctx");
+        var hovered = false;
+        if (interactive)
+        {
+            ImGui.Selectable("##row", false, ImGuiSelectableFlags.AllowItemOverlap, new Vector2(width, height));
+            hovered = ImGui.IsItemHovered();
+            if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                onLeftClick?.Invoke(record);
+            if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                ImGui.OpenPopup("##ctx");
+        }
+        else
+        {
+            ImGui.Dummy(new Vector2(width, height));
+        }
+
         var next = ImGui.GetCursorScreenPos();
 
         var color = record.IsTargeting ? config.ActiveColor
