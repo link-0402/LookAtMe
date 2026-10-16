@@ -87,8 +87,9 @@ that player), separator, Dote, Examine, Adventure Plate, Game Context Menu, View
 There's no custom message window. Send Tell readies a tell to `Name@World` in the regular chat
 input and focuses it, so you only type the message and press Enter:
 - **Vanilla chat:** do what the game's own "Send Tell" context menu entry does. Switch the
-  chat channel to Tell with that player as the recipient (`RaptureShellModule` tell-target
-  change), then open and focus the chat input.
+  chat channel to Tell with that player as the recipient
+  (`RaptureShellModule.SetContextTellTarget(name, world, worldId, accountId, contentId, reason,
+  setChatType: true)`), then open and focus the chat input (`AgentChatLog`).
 - **Chat 2:** Chat 2 follows the game's channel and tell target, so the same switch readies
   its input too. If Chat 2 is loaded and does not pick it up, fall back to the next step.
 - **Fallback:** if the channel-switch function isn't available on this game version, send
@@ -124,7 +125,7 @@ TargetMe/
     RelativeTime.cs          "now / 45s / 3m / 1h"
   Tracking/
     ViewerTracker.cs         per-frame scan, owns ViewerRecords, raises ViewerStarted
-    EmoteWatcher.cs          emote hook -> (instigator, emoteId, target) -> tracker
+    EmoteWatcher.cs          EmoteController.PlayEmote hook -> (instigator, emoteId, target) -> tracker
   Game/
     PlayerActions.cs         target, dote, examine, plate, game menu, copy name
     TellLauncher.cs          ready a tell in the chat input (vanilla / Chat 2 / fallback)
@@ -160,12 +161,14 @@ TargetMe.Tests/              xUnit, compiles Core/*.cs directly
 
 ### Emote hook
 
-Hook the game's emote handler (the same function PatMe/EmoteLog use), found by signature
-`E8 ?? ?? ?? ?? 48 8D 8B ?? ?? ?? ?? 4C 89 74 24` with delegate
-`void(ulong unk, ulong instigatorAddr, ushort emoteId, ulong targetId, ulong unk2)`.
-The signature and argument layout are checked in the running game through XIV Bridge before
-being relied on. If the signature is not found, emotes are disabled, a warning is logged and
-the settings show "Emote detection unavailable on this game version".
+Hook `FFXIVClientStructs` `EmoteController.PlayEmote(uint emoteId, PlayEmoteOption* option)`
+("plays an emote for a character that's not the local player"). Its address comes from
+ClientStructs (`EmoteController.Addresses.PlayEmote`), so the signature is maintained upstream.
+In the detour, `controller->OwnerObject` is who is emoting and `option->TargetId` is their
+target. Only player characters whose target is the local player are kept. Before relying on it,
+check through XIV Bridge that the address resolves and the hook installs. If it doesn't, emotes
+are disabled, a warning is logged, and settings show "Emote detection unavailable on this game
+version".
 
 ### Error handling
 
