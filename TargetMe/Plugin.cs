@@ -23,6 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     public ViewerWindow ViewerWindow { get; }
     public ViewerContextMenu ContextMenu { get; }
     public EmoteWatcher EmoteWatcher { get; }
+    public CameraFocus Camera { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -34,7 +35,8 @@ public sealed class Plugin : IDalamudPlugin
         var actions = new PlayerActions(Tracker);
         var moodles = new MoodlesIpc();
         var moodlesPopup = new MoodlesPopup(moodles, Tracker);
-        ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup);
+        Camera = new CameraFocus(Config, Tracker);
+        ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup, Camera);
 
         EmoteWatcher = new EmoteWatcher(Config, Tracker);
         var chipView = new EmoteChipView(Config);
@@ -63,6 +65,9 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        // The camera goes back to the player before its hooks are removed.
+        Camera.Stop();
+        Camera.Dispose();
         Services.CommandManager.RemoveHandler(Command);
         Services.ClientState.Login -= OnLogin;
         Services.Framework.Update -= OnFrameworkUpdate;
@@ -93,6 +98,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnFrameworkUpdate(IFramework framework)
     {
+        Camera.Update();
+
         var inDuty = Services.Condition[ConditionFlag.BoundByDuty];
         if (Config.HideInDuty && inDuty && ViewerWindow.IsOpen)
         {
@@ -121,6 +128,7 @@ public sealed class Plugin : IDalamudPlugin
                     : "TargetMe window locked.");
                 break;
             case "stop":
+                Camera.Stop();
                 break;
             default:
                 ToggleViewerWindow();

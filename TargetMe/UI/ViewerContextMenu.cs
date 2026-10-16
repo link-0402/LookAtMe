@@ -1,4 +1,3 @@
-using System;
 using Dalamud.Bindings.ImGui;
 using TargetMe.Core;
 using TargetMe.Game;
@@ -15,18 +14,17 @@ public sealed class ViewerContextMenu
     private readonly PlayerActions actions;
     private readonly MoodlesIpc moodles;
     private readonly MoodlesPopup moodlesPopup;
+    private readonly CameraFocus camera;
 
-    /// <summary>Camera focus hooks, null when camera focus isn't available.</summary>
-    public Func<ViewerRecord, bool>? IsCameraFocused { get; set; }
-    public Action<ViewerRecord>? ToggleCameraFocus { get; set; }
-
-    public ViewerContextMenu(Configuration config, ViewerTracker tracker, PlayerActions actions, MoodlesIpc moodles, MoodlesPopup moodlesPopup)
+    public ViewerContextMenu(Configuration config, ViewerTracker tracker, PlayerActions actions, MoodlesIpc moodles,
+        MoodlesPopup moodlesPopup, CameraFocus camera)
     {
         this.config = config;
         this.tracker = tracker;
         this.actions = actions;
         this.moodles = moodles;
         this.moodlesPopup = moodlesPopup;
+        this.camera = camera;
     }
 
     public void Draw(ViewerRecord record)
@@ -41,11 +39,11 @@ public sealed class ViewerContextMenu
             TellLauncher.Open(record);
         if (ImGui.MenuItem("Target", string.Empty, false, loaded))
             actions.Target(record);
-        if (IsCameraFocused != null && ToggleCameraFocus != null)
+        if (camera.Available)
         {
-            var focused = IsCameraFocused(record);
+            var focused = camera.IsFocused(record);
             if (ImGui.MenuItem(focused ? "Stop Focusing" : "Focus Camera", string.Empty, false, loaded || focused))
-                ToggleCameraFocus(record);
+                camera.Toggle(record);
         }
 
         ImGui.Separator();
