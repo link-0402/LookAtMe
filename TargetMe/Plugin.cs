@@ -3,6 +3,7 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using TargetMe.Alerts;
 using TargetMe.Game;
 using TargetMe.Integrations;
 using TargetMe.Tracking;
@@ -24,6 +25,8 @@ public sealed class Plugin : IDalamudPlugin
     public ViewerContextMenu ContextMenu { get; }
     public EmoteWatcher EmoteWatcher { get; }
     public CameraFocus Camera { get; }
+    public SoundAlert SoundAlert { get; }
+    public CrystalSyncBridge CrystalSync { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -50,6 +53,11 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(ViewerWindow);
         windowSystem.AddWindow(moodlesPopup);
 
+        SoundAlert = new SoundAlert(Config, () => ViewerWindow.IsOpen);
+        CrystalSync = new CrystalSyncBridge(Config);
+        Tracker.ViewerStarted += SoundAlert.OnViewerStarted;
+        Tracker.ViewerStarted += CrystalSync.OnViewerStarted;
+
         Services.PluginInterface.UiBuilder.Draw += Draw;
         Services.PluginInterface.UiBuilder.OpenMainUi += ToggleViewerWindow;
         Services.Framework.Update += OnFrameworkUpdate;
@@ -74,6 +82,8 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
         Services.PluginInterface.UiBuilder.Draw -= Draw;
         EmoteWatcher.Dispose();
+        Tracker.ViewerStarted -= SoundAlert.OnViewerStarted;
+        Tracker.ViewerStarted -= CrystalSync.OnViewerStarted;
         windowSystem.RemoveAllWindows();
         Tracker.Dispose();
     }
