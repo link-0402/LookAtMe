@@ -14,7 +14,7 @@ public static class ViewerRow
 
     /// <returns>Whether the row is hovered or its context menu is open.</returns>
     public static bool Draw(ViewerRecord record, DateTime now, Configuration config,
-        Action<ViewerRecord>? onLeftClick, Action<ViewerRecord>? drawChips, Action<ViewerRecord>? drawMenu)
+        Action<ViewerRecord>? onLeftClick, Action<ViewerRecord, float>? drawChips, Action<ViewerRecord>? drawMenu)
     {
         ImGui.PushID(record.Key);
 
@@ -58,7 +58,7 @@ public static class ViewerRow
         {
             var nameWidth = ImGui.CalcTextSize(record.Name).X;
             ImGui.SetCursorScreenPos(new Vector2(nameStart.X + nameWidth + 6f, start.Y));
-            drawChips(record);
+            drawChips(record, end.X - timeWidth - TimePadding * 3);
         }
 
         var menuOpen = false;

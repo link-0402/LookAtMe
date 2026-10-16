@@ -30,7 +30,8 @@ public sealed class ViewerWindow : Window
 
     public Action<ViewerRecord>? OnLeftClick { get; set; }
     public Action<ViewerRecord>? DrawContextMenu { get; set; }
-    public Action<ViewerRecord>? DrawEmoteChips { get; set; }
+    /// <summary>Draws a row's emote chips from the cursor; the float is the x they must stay left of.</summary>
+    public Action<ViewerRecord, float>? DrawEmoteChips { get; set; }
     public Action? OpenSettings { get; set; }
 
     public ViewerWindow(Configuration config, ViewerTracker tracker) : base("TargetMe##viewers", BaseFlags)

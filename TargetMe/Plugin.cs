@@ -22,6 +22,7 @@ public sealed class Plugin : IDalamudPlugin
     public ViewerTracker Tracker { get; }
     public ViewerWindow ViewerWindow { get; }
     public ViewerContextMenu ContextMenu { get; }
+    public EmoteWatcher EmoteWatcher { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -35,10 +36,14 @@ public sealed class Plugin : IDalamudPlugin
         var moodlesPopup = new MoodlesPopup(moodles, Tracker);
         ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup);
 
+        EmoteWatcher = new EmoteWatcher(Config, Tracker);
+        var chipView = new EmoteChipView(Config);
+
         ViewerWindow = new ViewerWindow(Config, Tracker)
         {
             OnLeftClick = actions.Target,
             DrawContextMenu = ContextMenu.Draw,
+            DrawEmoteChips = chipView.Draw,
         };
         windowSystem.AddWindow(ViewerWindow);
         windowSystem.AddWindow(moodlesPopup);
@@ -63,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.Framework.Update -= OnFrameworkUpdate;
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
         Services.PluginInterface.UiBuilder.Draw -= Draw;
+        EmoteWatcher.Dispose();
         windowSystem.RemoveAllWindows();
         Tracker.Dispose();
     }
