@@ -42,7 +42,8 @@ These need a second player, so check them yourself:
 - [ ] Someone targets you: they appear in the "now" colour, and move to "earlier" when they untarget.
 - [ ] They emote at you (/wave with you targeted): an emote icon appears next to their name and fades after the set time.
 - [ ] Hover their name: the line, ring and marker point at them. Turn so they're behind you: the edge arrow appears.
-- [ ] Right-click → Send Tell readies `/tell` to them in your chat input. Also try it with vanilla chat if you ever use it without Chat 2.
+- [ ] Right-click → Send Tell readies `/tell` to them in your chat input (checked with Chat 2).
+- [ ] **Required before release:** Send Tell with the vanilla chat (Chat 2 off). The chat should switch to Tell with them, and the input should open. If the input stays closed, `TellLauncher` needs an extra call to open it.
 - [ ] Right-click → Focus Camera orbits them, and Esc puts the camera back.
 - [ ] With sound on, the alert plays when they start targeting you.
 - [ ] The settings cog appears in the list's top-right corner while you hover the list.
