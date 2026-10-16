@@ -27,6 +27,7 @@ public sealed class Plugin : IDalamudPlugin
     public CameraFocus Camera { get; }
     public SoundAlert SoundAlert { get; }
     public CrystalSyncBridge CrystalSync { get; }
+    public SettingsWindow SettingsWindow { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -58,8 +59,13 @@ public sealed class Plugin : IDalamudPlugin
         Tracker.ViewerStarted += SoundAlert.OnViewerStarted;
         Tracker.ViewerStarted += CrystalSync.OnViewerStarted;
 
+        SettingsWindow = new SettingsWindow(Config, SoundAlert, EmoteWatcher, Camera, moodles, CrystalSync);
+        windowSystem.AddWindow(SettingsWindow);
+        ViewerWindow.OpenSettings = SettingsWindow.Toggle;
+
         Services.PluginInterface.UiBuilder.Draw += Draw;
         Services.PluginInterface.UiBuilder.OpenMainUi += ToggleViewerWindow;
+        Services.PluginInterface.UiBuilder.OpenConfigUi += SettingsWindow.Toggle;
         Services.Framework.Update += OnFrameworkUpdate;
         Services.ClientState.Login += OnLogin;
         Services.CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
@@ -80,6 +86,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.ClientState.Login -= OnLogin;
         Services.Framework.Update -= OnFrameworkUpdate;
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
+        Services.PluginInterface.UiBuilder.OpenConfigUi -= SettingsWindow.Toggle;
         Services.PluginInterface.UiBuilder.Draw -= Draw;
         EmoteWatcher.Dispose();
         Tracker.ViewerStarted -= SoundAlert.OnViewerStarted;
@@ -129,6 +136,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             case "settings":
             case "config":
+                SettingsWindow.Toggle();
                 break;
             case "move":
                 Config.WindowUnlocked = !Config.WindowUnlocked;
