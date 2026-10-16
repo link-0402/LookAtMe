@@ -13,6 +13,7 @@ public sealed class Plugin : IDalamudPlugin
     private const string Command = "/targetme";
 
     private readonly WindowSystem windowSystem = new("TargetMe");
+    private readonly HighlightOverlay overlay = new();
     private bool hiddenForDuty;
 
     public Configuration Config { get; }
@@ -60,7 +61,15 @@ public sealed class Plugin : IDalamudPlugin
         Tracker.Dispose();
     }
 
-    private void Draw() => windowSystem.Draw();
+    private void Draw()
+    {
+        windowSystem.Draw();
+
+        if (ViewerWindow.Hovered is { } hovered
+            && Tracker.Resolve(hovered) is { } target
+            && Services.ObjectTable.LocalPlayer is { } self)
+            overlay.Draw(target, self, Config);
+    }
 
     private void ToggleViewerWindow() => ViewerWindow.Toggle();
 

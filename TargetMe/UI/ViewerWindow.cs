@@ -19,8 +19,14 @@ public sealed class ViewerWindow : Window
     private readonly Configuration config;
     private readonly ViewerTracker tracker;
 
-    /// <summary>The row hovered, or whose context menu is open, during the last draw.</summary>
-    public ViewerRecord? Hovered { get; private set; }
+    private ViewerRecord? hovered;
+    private int hoveredFrame = -10;
+
+    /// <summary>
+    /// The row hovered, or whose context menu is open, during this or the previous frame.
+    /// Null once the window stops drawing (closed, or hidden with the game UI).
+    /// </summary>
+    public ViewerRecord? Hovered => ImGui.GetFrameCount() - hoveredFrame <= 1 ? hovered : null;
 
     public Action<ViewerRecord>? OnLeftClick { get; set; }
     public Action<ViewerRecord>? DrawContextMenu { get; set; }
@@ -45,11 +51,10 @@ public sealed class ViewerWindow : Window
         BgAlpha = config.BackgroundOpacity;
     }
 
-    public override void OnClose() => Hovered = null;
-
     public override void Draw()
     {
-        ViewerRecord? hovered = null;
+        hovered = null;
+        hoveredFrame = ImGui.GetFrameCount();
         var now = DateTime.Now;
         var rows = ViewerList.Visible(tracker.All, config.ListCap);
 
@@ -65,8 +70,6 @@ public sealed class ViewerWindow : Window
                     hovered = row;
             }
         }
-
-        Hovered = hovered;
 
         if (config.WindowUnlocked)
             DrawDashedBorder();
