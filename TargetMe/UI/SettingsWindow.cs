@@ -32,6 +32,7 @@ public sealed class SettingsWindow : Window
     private readonly FileDialogManager fileDialog = new();
     private string editedSoundPath = string.Empty;
     private bool soundPathActive;
+    private bool syncPauseDrawn;
 
     public SettingsWindow(Configuration config, SoundAlert sound, EmoteWatcher emotes, CameraFocus camera,
         MoodlesIpc moodles, PauseHotkey pauseHotkey, IReadOnlyList<ISyncService> syncServices)
@@ -69,6 +70,15 @@ public sealed class SettingsWindow : Window
 
     // Closing settings mid-capture (Esc closes the window too) must not leave the hotkey switched off.
     public override void OnClose() => pauseHotkey.Capturing = false;
+
+    // Recording only polls while its section is drawn, so another tab or a collapsed window
+    // stops it too. Runs every frame the window is open, collapsed or not.
+    public override void Update()
+    {
+        if (!syncPauseDrawn)
+            pauseHotkey.Capturing = false;
+        syncPauseDrawn = false;
+    }
 
     private static void Tab(string label, Action draw)
     {
@@ -251,6 +261,7 @@ public sealed class SettingsWindow : Window
 
     private void DrawSyncPause()
     {
+        syncPauseDrawn = true;
         ImGui.TextUnformatted("Sync pause");
         ImGui.TextWrapped("Hold the hotkey over a player to see their sync state. Release to pause them, or to unpause after a confirmation.");
         ImGui.Spacing();
