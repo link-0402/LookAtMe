@@ -35,7 +35,8 @@ public sealed class PauseHotkey : IDisposable
     private IPlayerCharacter? previewTarget;
     private IReadOnlyList<SyncPluginState>? previewStates;
     private bool hidingKey;
-    private bool disposed;
+    // Read from the plugin call's continuation, off the framework thread.
+    private volatile bool disposed;
 
     public PauseHotkey(Configuration config, ViewerTracker tracker, ViewerWindow viewerWindow,
         IReadOnlyList<ISyncService> services, UnpauseConfirmWindow confirm)
@@ -236,19 +237,25 @@ public sealed class PauseHotkey : IDisposable
     /// <summary>Shows a toast once the plugin's call finishes, back on the framework thread.</summary>
     private void Report(Task task, string success, string failure)
     {
-        task.ContinueWith(t => Services.Framework.RunOnFrameworkThread(() =>
+        // Checked before posting too: after unload the framework may no longer take work from this plugin.
+        task.ContinueWith(t =>
         {
             if (disposed)
                 return;
-            if (t.IsCompletedSuccessfully)
+            Services.Framework.RunOnFrameworkThread(() =>
             {
-                Notify(success, NotificationType.Success);
-                return;
-            }
+                if (disposed)
+                    return;
+                if (t.IsCompletedSuccessfully)
+                {
+                    Notify(success, NotificationType.Success);
+                    return;
+                }
 
-            Services.Log.Error(t.Exception?.GetBaseException() ?? new TaskCanceledException(), failure);
-            Notify(failure, NotificationType.Warning);
-        }), TaskScheduler.Default);
+                Services.Log.Error(t.Exception?.GetBaseException() ?? new TaskCanceledException(), failure);
+                Notify(failure, NotificationType.Warning);
+            });
+        }, TaskScheduler.Default);
     }
 
     private static void Notify(string text, NotificationType type) =>
