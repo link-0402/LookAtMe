@@ -37,7 +37,7 @@ public sealed class Plugin : IDalamudPlugin
         Config = Services.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         Tracker = new ViewerTracker();
-        SyncServices = [new LightlessSyncService()];
+        SyncServices = [new LightlessSyncService(), new PlayerSyncService()];
 
         var actions = new PlayerActions(Tracker);
         var moodles = new MoodlesIpc();
