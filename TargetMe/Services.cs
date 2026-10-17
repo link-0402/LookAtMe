@@ -20,4 +20,5 @@ internal sealed class Services
     [PluginService] public static IKeyState KeyState { get; private set; } = null!;
     [PluginService] public static IGameGui GameGui { get; private set; } = null!;
     [PluginService] public static IPluginLog Log { get; private set; } = null!;
+    [PluginService] public static INotificationManager Notifications { get; private set; } = null!;
 }

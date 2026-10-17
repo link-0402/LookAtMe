@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Dalamud.Configuration;
+using TargetMe.Core;
 
 namespace TargetMe;
 
@@ -63,6 +64,12 @@ public sealed class Configuration : IPluginConfiguration
     public bool StartInFront { get; set; } = true;
     public bool StopOnCombat { get; set; } = true;
     public CameraOnStop CameraOnStop { get; set; } = CameraOnStop.RestorePrevious;
+
+    // Sync pause
+    public HotkeyBinding PauseHotkey { get; set; } = new();
+    public Vector4 PauseColor { get; set; } = new(1.0f, 0.31f, 0.64f, 1f);
+    public Vector4 UnpauseColor { get; set; } = new(0.30f, 0.90f, 0.45f, 1f);
+    public Vector4 NotPairedColor { get; set; } = new(0.55f, 0.55f, 0.55f, 0.8f);
 
     public void Save() => Services.PluginInterface.SavePluginConfig(this);
 }

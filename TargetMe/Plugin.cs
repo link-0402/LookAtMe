@@ -30,6 +30,7 @@ public sealed class Plugin : IDalamudPlugin
     public SoundAlert SoundAlert { get; }
     public SettingsWindow SettingsWindow { get; }
     public IReadOnlyList<ISyncService> SyncServices { get; }
+    public PauseHotkey PauseHotkey { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -56,6 +57,10 @@ public sealed class Plugin : IDalamudPlugin
         };
         windowSystem.AddWindow(ViewerWindow);
         windowSystem.AddWindow(moodlesPopup);
+
+        var unpauseConfirm = new UnpauseConfirmWindow();
+        windowSystem.AddWindow(unpauseConfirm);
+        PauseHotkey = new PauseHotkey(Config, Tracker, ViewerWindow, SyncServices, unpauseConfirm);
 
         SoundAlert = new SoundAlert(Config, () => ViewerWindow.IsOpen);
         Tracker.ViewerStarted += SoundAlert.OnViewerStarted;
@@ -93,6 +98,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.Draw -= Draw;
         EmoteWatcher.Dispose();
         Tracker.ViewerStarted -= SoundAlert.OnViewerStarted;
+        PauseHotkey.Dispose();
         windowSystem.RemoveAllWindows();
         Tracker.Dispose();
     }
@@ -101,7 +107,10 @@ public sealed class Plugin : IDalamudPlugin
     {
         windowSystem.Draw();
 
-        if (ViewerWindow.Hovered is { } hovered
+        // While the sync pause hotkey marks someone, the hover overlay stays out of the way.
+        PauseHotkey.Draw(overlay);
+        if (!PauseHotkey.HasTarget
+            && ViewerWindow.Hovered is { } hovered
             && Tracker.Resolve(hovered) is { } target
             && Services.ObjectTable.LocalPlayer is { } self)
             overlay.Draw(target, self, OverlayStyle.From(Config));
@@ -125,6 +134,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnFrameworkUpdate(IFramework framework)
     {
         Camera.Update();
+        PauseHotkey.Update();
 
         var inDuty = Services.Condition[ConditionFlag.BoundByDuty];
         if (Config.HideInDuty && inDuty && ViewerWindow.IsOpen)
