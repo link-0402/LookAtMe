@@ -13,6 +13,8 @@ public sealed class TimedCache<TKey, TValue> where TKey : notnull
 
     public int Count => entries.Count;
 
+    public void Clear() => entries.Clear();
+
     public TValue Get(TKey key, DateTime now, Func<TValue> load)
     {
         if (entries.TryGetValue(key, out var entry) && now - entry.LoadedAt < ttl)

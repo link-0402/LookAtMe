@@ -88,4 +88,16 @@ public class TimedCacheTests
 
         Assert.Equal(1, cache.Count);
     }
+
+    [Fact]
+    public void ClearDropsEntries()
+    {
+        var cache = new TimedCache<string, int>(Ttl);
+        cache.Get("k", T0, () => 1);
+
+        cache.Clear();
+
+        Assert.Equal(2, cache.Get("k", T0, () => 2));
+        Assert.Equal(1, cache.Count);
+    }
 }

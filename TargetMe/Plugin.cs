@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
@@ -6,6 +7,7 @@ using Dalamud.Plugin.Services;
 using TargetMe.Alerts;
 using TargetMe.Game;
 using TargetMe.Integrations;
+using TargetMe.Integrations.Sync;
 using TargetMe.Tracking;
 using TargetMe.UI;
 
@@ -27,6 +29,7 @@ public sealed class Plugin : IDalamudPlugin
     public CameraFocus Camera { get; }
     public SoundAlert SoundAlert { get; }
     public SettingsWindow SettingsWindow { get; }
+    public IReadOnlyList<ISyncService> SyncServices { get; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -34,6 +37,7 @@ public sealed class Plugin : IDalamudPlugin
         Config = Services.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         Tracker = new ViewerTracker();
+        SyncServices = [new LightlessSyncService()];
 
         var actions = new PlayerActions(Tracker);
         var moodles = new MoodlesIpc();
@@ -65,6 +69,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.OpenConfigUi += SettingsWindow.Toggle;
         Services.Framework.Update += OnFrameworkUpdate;
         Services.ClientState.Login += OnLogin;
+        Services.PluginInterface.ActivePluginsChanged += OnPluginsChanged;
         Services.CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
             HelpMessage = "Toggle the viewer list. \"/targetme settings\" opens settings, \"/targetme move\" unlocks the window to move or resize it, \"/targetme stop\" stops camera focus.",
@@ -81,6 +86,7 @@ public sealed class Plugin : IDalamudPlugin
         Camera.Dispose();
         Services.CommandManager.RemoveHandler(Command);
         Services.ClientState.Login -= OnLogin;
+        Services.PluginInterface.ActivePluginsChanged -= OnPluginsChanged;
         Services.Framework.Update -= OnFrameworkUpdate;
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
         Services.PluginInterface.UiBuilder.OpenConfigUi -= SettingsWindow.Toggle;
@@ -102,6 +108,13 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void ToggleViewerWindow() => ViewerWindow.Toggle();
+
+    // A sync plugin was loaded, unloaded or updated: rebind on next use.
+    private void OnPluginsChanged(IActivePluginsChangedEventArgs args)
+    {
+        foreach (var service in SyncServices)
+            service.Reconnect();
+    }
 
     private void OnLogin()
     {
