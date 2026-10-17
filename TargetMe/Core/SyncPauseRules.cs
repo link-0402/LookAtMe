@@ -68,4 +68,19 @@ public static class SyncPauseRules
     /// <summary>The requested plugins whose fresh state is still Paused, in requested order.</summary>
     public static IReadOnlyList<string> StillPaused(IReadOnlyList<SyncPluginState> fresh, IReadOnlyList<string> requested) =>
         requested.Where(plugin => fresh.Any(s => s.Plugin == plugin && s.State == SyncState.Paused)).ToList();
+
+    /// <summary>A notice for each requested plugin that <see cref="StillPaused"/> leaves out, saying why.</summary>
+    public static IReadOnlyList<string> SkippedUnpauses(IReadOnlyList<SyncPluginState> fresh, IReadOnlyList<string> requested, string name) =>
+        requested
+            .Select(plugin => fresh.FirstOrDefault(s => s.Plugin == plugin, new(plugin, SyncState.Unavailable)))
+            .Where(s => s.State != SyncState.Paused)
+            .Select(s => s.State switch
+            {
+                SyncState.Synced => $"{name} is no longer paused in {s.Plugin}",
+                SyncState.NotPaired => $"{name} is no longer paired in {s.Plugin}",
+                SyncState.Offline => $"{s.Plugin} is offline, so {name} wasn't unpaused",
+                SyncState.PausedCantUnpause => $"{s.Plugin} can't unpause {name} here",
+                _ => $"{s.Plugin} isn't available, so {name} wasn't unpaused",
+            })
+            .ToList();
 }

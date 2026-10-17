@@ -86,4 +86,36 @@ public class SyncPauseRulesTests
         Assert.Equal(["Lightless"],
             SyncPauseRules.StillPaused([L(SyncState.Paused)], ["PlayerSync", "Lightless"]));
     }
+
+    [Fact]
+    public void SkippedUnpausesSayWhy()
+    {
+        Assert.Equal(
+            [
+                "Alice is no longer paused in Lightless",
+                "PlayerSync is offline, so Alice wasn't unpaused",
+            ],
+            SyncPauseRules.SkippedUnpauses([L(SyncState.Synced), P(SyncState.Offline)], ["Lightless", "PlayerSync"], "Alice"));
+        Assert.Equal(
+            [
+                "Alice is no longer paired in Lightless",
+                "PlayerSync can't unpause Alice here",
+            ],
+            SyncPauseRules.SkippedUnpauses([L(SyncState.NotPaired), P(SyncState.PausedCantUnpause)], ["Lightless", "PlayerSync"], "Alice"));
+    }
+
+    [Fact]
+    public void SkippedUnpausesCoverMissingPlugins()
+    {
+        Assert.Equal(["PlayerSync isn't available, so Alice wasn't unpaused"],
+            SyncPauseRules.SkippedUnpauses([L(SyncState.Paused)], ["Lightless", "PlayerSync"], "Alice"));
+        Assert.Equal(["Lightless isn't available, so Alice wasn't unpaused"],
+            SyncPauseRules.SkippedUnpauses([L(SyncState.Unavailable)], ["Lightless"], "Alice"));
+    }
+
+    [Fact]
+    public void NothingSkippedWhenStillPaused()
+    {
+        Assert.Empty(SyncPauseRules.SkippedUnpauses([L(SyncState.Paused), P(SyncState.Paused)], ["Lightless", "PlayerSync"], "Alice"));
+    }
 }

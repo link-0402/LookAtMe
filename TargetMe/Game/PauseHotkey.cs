@@ -221,7 +221,10 @@ public sealed class PauseHotkey : IDisposable
             return;
         }
 
-        foreach (var plugin in SyncPauseRules.StillPaused(States(player, fresh: true), plugins))
+        var states = States(player, fresh: true);
+        foreach (var skipped in SyncPauseRules.SkippedUnpauses(states, plugins, name))
+            Notify(skipped, NotificationType.Info);
+        foreach (var plugin in SyncPauseRules.StillPaused(states, plugins))
             Report(Service(plugin).SetPaused(player, false), $"Unpaused {name} ({plugin})", $"Couldn't unpause {name} in {plugin}");
     }
 
