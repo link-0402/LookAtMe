@@ -38,6 +38,33 @@ public class HotkeyBindingTests
     }
 
     [Fact]
+    public void PhaseUpWhenMainKeyUpOrEmpty()
+    {
+        Assert.Equal(KeyPhase.Up, new HotkeyBinding { Key = F, Ctrl = true }.Phase(Down(Ctrl)));
+        Assert.Equal(KeyPhase.Up, new HotkeyBinding().Phase(_ => true));
+    }
+
+    [Fact]
+    public void PhaseChordWithExactModifiers()
+    {
+        Assert.Equal(KeyPhase.Chord, new HotkeyBinding { Key = F, Ctrl = true }.Phase(Down(Ctrl, F)));
+        Assert.Equal(KeyPhase.Chord, new HotkeyBinding { Key = F }.Phase(Down(F)));
+    }
+
+    [Fact]
+    public void PhaseSpoiledByUnboundModifier()
+    {
+        Assert.Equal(KeyPhase.Spoiled, new HotkeyBinding { Key = F, Ctrl = true }.Phase(Down(Ctrl, Shift, F)));
+        Assert.Equal(KeyPhase.Spoiled, new HotkeyBinding { Key = F }.Phase(Down(0x12, F)));
+    }
+
+    [Fact]
+    public void PhaseMainOnlyWhenBoundModifierReleased()
+    {
+        Assert.Equal(KeyPhase.MainOnly, new HotkeyBinding { Key = F, Ctrl = true, Shift = true }.Phase(Down(Ctrl, F)));
+    }
+
+    [Fact]
     public void MouseButtonsAreMouse()
     {
         Assert.True(new HotkeyBinding { Key = 0x05 }.IsMouse);

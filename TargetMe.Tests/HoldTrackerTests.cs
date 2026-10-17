@@ -1,4 +1,5 @@
 using TargetMe.Core;
+using static TargetMe.Core.KeyPhase;
 
 namespace TargetMe.Tests;
 
@@ -9,9 +10,9 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        Assert.False(hold.Update(held: true, active: true));
+        Assert.False(hold.Update(Chord, active: true));
         Assert.True(hold.Holding);
-        Assert.True(hold.Update(held: false, active: true));
+        Assert.True(hold.Update(Up, active: true));
         Assert.False(hold.Holding);
     }
 
@@ -20,11 +21,11 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        hold.Update(true, true);
-        hold.Update(true, false);
+        hold.Update(Chord, true);
+        hold.Update(Chord, false);
 
         Assert.False(hold.Holding);
-        Assert.False(hold.Update(false, true));
+        Assert.False(hold.Update(Up, true));
     }
 
     [Fact]
@@ -32,13 +33,13 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        hold.Update(true, true);
-        hold.Update(true, false);
-        hold.Update(true, true);
-        Assert.False(hold.Update(false, true));
+        hold.Update(Chord, true);
+        hold.Update(Chord, false);
+        hold.Update(Chord, true);
+        Assert.False(hold.Update(Up, true));
 
-        hold.Update(true, true);
-        Assert.True(hold.Update(false, true));
+        hold.Update(Chord, true);
+        Assert.True(hold.Update(Up, true));
     }
 
     [Fact]
@@ -46,9 +47,9 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        Assert.False(hold.Update(true, false));
-        Assert.False(hold.Update(true, true));
-        Assert.False(hold.Update(false, true));
+        Assert.False(hold.Update(Chord, false));
+        Assert.False(hold.Update(Chord, true));
+        Assert.False(hold.Update(Up, true));
     }
 
     [Fact]
@@ -56,9 +57,9 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        hold.Update(true, true);
+        hold.Update(Chord, true);
 
-        Assert.False(hold.Update(false, false));
+        Assert.False(hold.Update(Up, false));
     }
 
     [Fact]
@@ -66,9 +67,48 @@ public class HoldTrackerTests
     {
         var hold = new HoldTracker();
 
-        hold.Update(true, true);
+        hold.Update(Chord, true);
         hold.Reset();
 
-        Assert.False(hold.Update(false, true));
+        Assert.False(hold.Update(Chord, true));
+        Assert.False(hold.Update(Up, true));
+    }
+
+    // Alt+Tab, Ctrl+Shift added mid-hold: cancel, never a release.
+    [Fact]
+    public void ExtraModifierCancels()
+    {
+        var hold = new HoldTracker();
+
+        hold.Update(Chord, true);
+
+        Assert.False(hold.Update(Spoiled, true));
+        Assert.False(hold.Holding);
+        Assert.False(hold.Update(Up, true));
+    }
+
+    [Fact]
+    public void ChordReturningAfterSpoilNeedsFreshPress()
+    {
+        var hold = new HoldTracker();
+
+        hold.Update(Chord, true);
+        hold.Update(Spoiled, true);
+
+        Assert.False(hold.Update(Chord, true));
+        Assert.False(hold.Update(Up, true));
+    }
+
+    // Letting go of Shift before D on Ctrl+Shift+D: still holding until D goes up.
+    [Fact]
+    public void BoundModifierReleasedKeepsHoldingUntilMainKeyUp()
+    {
+        var hold = new HoldTracker();
+
+        hold.Update(Chord, true);
+
+        Assert.False(hold.Update(MainOnly, true));
+        Assert.True(hold.Holding);
+        Assert.True(hold.Update(Up, true));
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -26,8 +25,6 @@ public sealed class PauseHotkey : IDisposable
     private const int VkMouse4 = 0x05;
     private const int VkMouse5 = 0x06;
 
-    private static nint gameWindow;
-
     private readonly Configuration config;
     private readonly ViewerTracker tracker;
     private readonly ViewerWindow viewerWindow;
@@ -37,7 +34,7 @@ public sealed class PauseHotkey : IDisposable
     private IPlayerCharacter? target;
     private IPlayerCharacter? previewTarget;
     private IReadOnlyList<SyncPluginState>? previewStates;
-    private bool awaitingRelease;
+    private bool hidingKey;
     private bool disposed;
 
     public PauseHotkey(Configuration config, ViewerTracker tracker, ViewerWindow viewerWindow,
@@ -60,15 +57,13 @@ public sealed class PauseHotkey : IDisposable
     public void Update()
     {
         var binding = config.PauseHotkey;
-        var held = binding.IsHeld(IsDown);
+        var phase = binding.Phase(IsDown);
+        var released = hold.Update(phase, IsActive(binding));
 
-        // A key just recorded in settings is still down; it only counts after it's been let go.
-        if (awaitingRelease && !held)
-            awaitingRelease = false;
-        var released = hold.Update(held, !awaitingRelease && IsActive(binding));
-
-        // Keep the game from acting on the key while it's ours. Mouse buttons aren't in its key array.
-        if (hold.Holding && !binding.IsMouse && Services.KeyState.IsVirtualKeyValid((VirtualKey)binding.Key))
+        // Keep the game from acting on the key while it's ours, until it's physically up (even if the
+        // hold ended early). Mouse buttons aren't in its key array.
+        hidingKey = hold.Holding || (hidingKey && phase != KeyPhase.Up);
+        if (hidingKey && !binding.IsMouse && Services.KeyState.IsVirtualKeyValid((VirtualKey)binding.Key))
             Services.KeyState[(VirtualKey)binding.Key] = false;
 
         target = hold.Holding || released ? FindTarget() : null;
@@ -143,7 +138,8 @@ public sealed class PauseHotkey : IDisposable
                 continue;
 
             Capturing = false;
-            awaitingRelease = true;
+            // The key just recorded is still down; it only counts after it's been let go.
+            hold.Reset();
             return new HotkeyBinding
             {
                 Key = vk,
@@ -165,11 +161,13 @@ public sealed class PauseHotkey : IDisposable
             .Distinct();
 
     /// <summary>Whether a key (virtual-key code) is down, and only while the game window is in front.</summary>
-    public static bool IsDown(int vk)
+    public static bool IsDown(int vk) => IsGameForeground() && (GetAsyncKeyState(vk) & KeyDownBit) != 0;
+
+    // By process rather than by window handle, so an ImGui window dragged outside the game still counts.
+    private static bool IsGameForeground()
     {
-        if (gameWindow == 0)
-            gameWindow = Process.GetCurrentProcess().MainWindowHandle;
-        return GetForegroundWindow() == gameWindow && (GetAsyncKeyState(vk) & KeyDownBit) != 0;
+        GetWindowThreadProcessId(GetForegroundWindow(), out var processId);
+        return processId == (uint)Environment.ProcessId;
     }
 
     public void Dispose()
@@ -182,6 +180,7 @@ public sealed class PauseHotkey : IDisposable
         !binding.IsEmpty
         && !Capturing
         && !confirm.IsOpen
+        && IsGameForeground()
         && Services.ClientState.IsLoggedIn
         && Services.ObjectTable.LocalPlayer != null
         && !TextInput.IsActive()
@@ -257,4 +256,7 @@ public sealed class PauseHotkey : IDisposable
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
 }

@@ -1,20 +1,24 @@
 namespace TargetMe.Core;
 
 /// <summary>
-/// Turns a held key into a press/release pair. A hold only counts if it started with a fresh press
-/// while active, and stayed active until the release; anything else is dropped.
+/// Turns a held binding into a press/release pair. A hold only starts with a fresh press of the full
+/// chord while active, and only counts if the main key goes up while still active. Going inactive
+/// (focus loss, chat, cutscene) or adding a modifier the binding doesn't use cancels it, and the main
+/// key then has to come up before a new hold can start.
 /// </summary>
 public sealed class HoldTracker
 {
-    private bool wasHeld;
+    private bool needsUp;
 
     public bool Holding { get; private set; }
 
     /// <summary>Feed one frame; returns true on the frame a valid hold is released.</summary>
-    public bool Update(bool held, bool active)
+    public bool Update(KeyPhase phase, bool active)
     {
-        var freshPress = held && !wasHeld;
-        wasHeld = held;
+        if (phase == KeyPhase.Up)
+            needsUp = false;
+        else if (phase == KeyPhase.Spoiled || !active)
+            needsUp = true;
 
         if (!active)
         {
@@ -22,16 +26,27 @@ public sealed class HoldTracker
             return false;
         }
 
-        if (Holding && !held)
+        if (Holding)
         {
-            Holding = false;
-            return true;
+            if (phase == KeyPhase.Up)
+            {
+                Holding = false;
+                return true;
+            }
+
+            if (phase == KeyPhase.Spoiled)
+                Holding = false;
+            return false;
         }
 
-        if (freshPress)
+        if (phase == KeyPhase.Chord && !needsUp)
             Holding = true;
         return false;
     }
 
-    public void Reset() => Holding = false;
+    public void Reset()
+    {
+        Holding = false;
+        needsUp = true;
+    }
 }

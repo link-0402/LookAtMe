@@ -3,6 +3,19 @@ using System.Text;
 
 namespace TargetMe.Core;
 
+/// <summary>Where a binding's keys are right now.</summary>
+public enum KeyPhase
+{
+    /// <summary>The main key is up (or nothing is bound).</summary>
+    Up,
+    /// <summary>The main key and exactly the bound modifiers are down.</summary>
+    Chord,
+    /// <summary>The main key is down, a bound modifier was let go, and nothing extra is down.</summary>
+    MainOnly,
+    /// <summary>The main key is down together with a modifier the binding doesn't use.</summary>
+    Spoiled,
+}
+
 /// <summary>A main key (a Windows virtual-key code, or Mouse 4 / Mouse 5) plus exact Ctrl/Shift/Alt state.</summary>
 public sealed record HotkeyBinding
 {
@@ -22,12 +35,18 @@ public sealed record HotkeyBinding
     public bool IsMouse => Key is VkMouse4 or VkMouse5;
 
     /// <summary>True when the main key is down and each modifier's state matches the binding exactly.</summary>
-    public bool IsHeld(Func<int, bool> down) =>
-        !IsEmpty
-        && down(Key)
-        && down(VkControl) == Ctrl
-        && down(VkShift) == Shift
-        && down(VkMenu) == Alt;
+    public bool IsHeld(Func<int, bool> down) => Phase(down) == KeyPhase.Chord;
+
+    public KeyPhase Phase(Func<int, bool> down)
+    {
+        if (IsEmpty || !down(Key))
+            return KeyPhase.Up;
+
+        bool ctrl = down(VkControl), shift = down(VkShift), alt = down(VkMenu);
+        if ((ctrl && !Ctrl) || (shift && !Shift) || (alt && !Alt))
+            return KeyPhase.Spoiled;
+        return ctrl == Ctrl && shift == Shift && alt == Alt ? KeyPhase.Chord : KeyPhase.MainOnly;
+    }
 
     public string Display(Func<int, string> keyName)
     {
