@@ -7,9 +7,17 @@ using TargetMe.Core;
 
 namespace TargetMe.UI;
 
+/// <summary>How the world highlight looks; the viewer-list hover and the sync pause marker each build one.</summary>
+public readonly record struct OverlayStyle(
+    Vector4 Color, float Thickness, bool Line, bool Ring, bool Marker, bool Pulse, string? Label = null)
+{
+    public static OverlayStyle From(Configuration c) =>
+        new(c.OverlayColor, c.OverlayThickness, c.OverlayLine, c.OverlayRing, c.OverlayMarker, c.OverlayPulse);
+}
+
 /// <summary>
 /// Lights up a player in the world: a line from the local player to them, a ring at their feet,
-/// a marker over their head, and an arrow at the screen edge when they're off-screen.
+/// a marker over their head with an optional label, and an arrow at the screen edge when they're off-screen.
 /// </summary>
 public sealed class HighlightOverlay
 {
@@ -19,25 +27,26 @@ public sealed class HighlightOverlay
     private const float ChestHeight = 1.2f;
     private const float MarkerHeight = 2.1f;
     private const float EdgeMargin = 48f;
+    private static readonly Vector4 LabelBackground = new(0, 0, 0, 0.55f);
 
-    public void Draw(IPlayerCharacter target, IPlayerCharacter self, Configuration config)
+    public void Draw(IPlayerCharacter target, IPlayerCharacter self, OverlayStyle style)
     {
         var drawList = ImGui.GetBackgroundDrawList();
-        var alpha = config.OverlayPulse ? OverlayGeometry.Pulse(ImGui.GetTime()) : 1f;
-        var color = ImGui.GetColorU32(config.OverlayColor with { W = config.OverlayColor.W * alpha });
-        var glow = ImGui.GetColorU32(config.OverlayColor with { W = config.OverlayColor.W * alpha * 0.3f });
-        var thickness = config.OverlayThickness;
+        var alpha = style.Pulse ? OverlayGeometry.Pulse(ImGui.GetTime()) : 1f;
+        var color = ImGui.GetColorU32(style.Color with { W = style.Color.W * alpha });
+        var glow = ImGui.GetColorU32(style.Color with { W = style.Color.W * alpha * 0.3f });
+        var thickness = style.Thickness;
 
         var targetChest = target.Position + new Vector3(0, ChestHeight, 0);
 
-        if (config.OverlayLine)
+        if (style.Line)
         {
             var from = self.Position + new Vector3(0, ChestHeight, 0);
             DrawWorldPolyline(drawList, i => Vector3.Lerp(from, targetChest, i / (float)LineSegments), LineSegments, glow, thickness * 3f);
             DrawWorldPolyline(drawList, i => Vector3.Lerp(from, targetChest, i / (float)LineSegments), LineSegments, color, thickness);
         }
 
-        if (config.OverlayRing)
+        if (style.Ring)
         {
             Vector3 RingPoint(int i)
             {
@@ -49,15 +58,22 @@ public sealed class HighlightOverlay
             DrawWorldPolyline(drawList, RingPoint, RingSegments, color, thickness);
         }
 
-        if (config.OverlayMarker
-            && Services.GameGui.WorldToScreen(target.Position + new Vector3(0, MarkerHeight, 0), out var head))
+        if (Services.GameGui.WorldToScreen(target.Position + new Vector3(0, MarkerHeight, 0), out var head))
         {
             var scale = ImGuiHelpers.GlobalScale;
-            var tip = head;
-            var left = head + new Vector2(-14, -24) * scale;
-            var right = head + new Vector2(14, -24) * scale;
-            drawList.AddTriangleFilled(left, right, tip, color);
-            drawList.AddTriangle(left, right, tip, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.6f * alpha)), 1.5f);
+            if (style.Marker)
+            {
+                var left = head + new Vector2(-14, -24) * scale;
+                var right = head + new Vector2(14, -24) * scale;
+                drawList.AddTriangleFilled(left, right, head, color);
+                drawList.AddTriangle(left, right, head, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.6f * alpha)), 1.5f);
+            }
+
+            if (style.Label is { } label)
+            {
+                var size = ImGui.CalcTextSize(label);
+                DrawLabel(drawList, label, head + new Vector2(-size.X / 2, 6 * scale), color);
+            }
         }
 
         var inFront = Services.GameGui.WorldToScreen(targetChest, out var projected, out var inView);
@@ -78,6 +94,13 @@ public sealed class HighlightOverlay
         }
     }
 
+    private static void DrawLabel(ImDrawListPtr drawList, string text, Vector2 topLeft, uint color)
+    {
+        var size = ImGui.CalcTextSize(text);
+        drawList.AddRectFilled(topLeft - new Vector2(4, 2), topLeft + size + new Vector2(4, 2), ImGui.GetColorU32(LabelBackground), 4f);
+        drawList.AddText(topLeft, color, text);
+    }
+
     private static void DrawEdgeArrow(ImDrawListPtr drawList, string name, Vector2 projected, bool behind, uint color)
     {
         var viewport = ImGui.GetMainViewport();
@@ -93,8 +116,6 @@ public sealed class HighlightOverlay
         drawList.AddTriangleFilled(tip, baseCenter + side * 15 * scale, baseCenter - side * 15 * scale, color);
 
         var textSize = ImGui.CalcTextSize(name);
-        var textPos = at - dir * (30 * scale + textSize.Length() / 2) - textSize / 2;
-        drawList.AddRectFilled(textPos - new Vector2(4, 2), textPos + textSize + new Vector2(4, 2), ImGui.GetColorU32(new Vector4(0, 0, 0, 0.55f)), 4f);
-        drawList.AddText(textPos, color, name);
+        DrawLabel(drawList, name, at - dir * (30 * scale + textSize.Length() / 2) - textSize / 2, color);
     }
 }

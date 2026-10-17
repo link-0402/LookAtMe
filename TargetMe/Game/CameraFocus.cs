@@ -1,11 +1,9 @@
 using System;
-using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using TargetMe.Core;
 using TargetMe.Tracking;
 using GameObject = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
@@ -169,7 +167,7 @@ public sealed unsafe class CameraFocus : IDisposable
     {
         TryInstallHooks();
 
-        var stopRequested = escGate.ShouldStop(Services.KeyState[VirtualKey.ESCAPE], IsTyping());
+        var stopRequested = escGate.ShouldStop(Services.KeyState[VirtualKey.ESCAPE], TextInput.IsActive());
         if (focusedKey == null)
             return;
 
@@ -192,12 +190,6 @@ public sealed unsafe class CameraFocus : IDisposable
         focusedAddress = target.Address;
         // The game resets the closest zoom now and then (mounting, for example), so keep it applied.
         ApplyCloseUpLimit();
-    }
-
-    private static bool IsTyping()
-    {
-        var atk = RaptureAtkModule.Instance();
-        return (atk != null && atk->AtkModule.IsTextInputActive()) || ImGui.GetIO().WantTextInput;
     }
 
     private void ApplyCloseUpLimit()

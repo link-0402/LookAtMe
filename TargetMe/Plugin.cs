@@ -104,7 +104,7 @@ public sealed class Plugin : IDalamudPlugin
         if (ViewerWindow.Hovered is { } hovered
             && Tracker.Resolve(hovered) is { } target
             && Services.ObjectTable.LocalPlayer is { } self)
-            overlay.Draw(target, self, Config);
+            overlay.Draw(target, self, OverlayStyle.From(Config));
     }
 
     private void ToggleViewerWindow() => ViewerWindow.Toggle();
