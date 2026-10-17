@@ -70,8 +70,10 @@ A small centered window, `NoCollapse | AlwaysAutoResize`, no close button:
 - Buttons: **Unpause** and **Cancel**. Esc cancels.
 - **Unpause** unpauses in each listed plugin, then shows a toast per plugin:
   `Unpaused Name (PlayerSync)`.
-- The popup keeps the pair references it was opened with. It re-checks state when confirmed and
-  skips a plugin whose pair is no longer paused or no longer known.
+- The popup keeps the player's object id and name and the plugins it asked about. On confirm it
+  finds the player again, re-reads each plugin's state fresh, and skips a plugin where they're
+  no longer paused or no longer known. If the player is no longer loaded, nothing is sent and a
+  warning toast says `Name is no longer nearby`.
 
 ### Feedback
 
@@ -82,10 +84,15 @@ failure: `Couldn't pause Name in Lightless`). Exceptions go to the log with the 
 
 - A binding is one main key plus any of Ctrl / Shift / Alt. Modifiers must match exactly:
   Ctrl+F doesn't fire on Ctrl+Shift+F. The default is no key (feature off).
-- **Keyboard keys** are read through `IKeyState`. While the feature is active and the binding is
-  held, TargetMe clears the main key there every frame, so the game never acts on it.
-- **Mouse side buttons** (Mouse 4 / Mouse 5) are read through ImGui. The game's key array doesn't
-  include them, so they can't be hidden from the game. Settings say so next to the capture button.
+- **Reading:** whether the binding is held is read with Win32 `GetAsyncKeyState`, for keyboard
+  keys, modifiers and mouse side buttons (`VK_XBUTTON1` / `VK_XBUTTON2`) alike, and only while
+  the game window is the foreground window. It can't be read back from `IKeyState`, because
+  TargetMe clears the key there (next point), after which the game's key state reports it
+  released.
+- **Hiding:** while the feature is active and the binding is held, TargetMe clears the main key
+  in `IKeyState` every frame, so the game never acts on it.
+- **Mouse side buttons** (Mouse 4 / Mouse 5) aren't in the game's key array, so they can't be
+  hidden from the game. Settings say so next to the capture button.
 - **Capture** in settings: click the hotkey button, then press the key or chord. Esc cancels
   the capture. **Clear** turns the feature off. Ctrl, Shift and Alt can't be the main key.
 - A key held while the feature became inactive (for example, chat opened) doesn't fire on
@@ -185,10 +192,12 @@ New and changed files:
 TargetMe/
   Core/
     HotkeyBinding.cs          key + modifiers, IsHeld(...), display text, validation (pure)
+    HoldTracker.cs            press/release edges; a hold cut short by inactivity never fires (pure)
     SyncPauseRules.cs         per-plugin states -> marker style, label parts, release action (pure)
   Integrations/Sync/
     ISyncService.cs           Name, Status, GetState(player), SetPaused(player, paused)
     SyncReflection.cs         plugin instance, service container, member lookup helpers
+    ReflectedSyncService.cs   shared base: connect lifecycle, cache, status, error wrapping
     LightlessSyncService.cs
     PlayerSyncService.cs
   Game/
@@ -222,13 +231,12 @@ public static (IReadOnlyList<string> Pause, IReadOnlyList<string> ConfirmUnpause
 (`PausedCantUnpause` and `Offline` alone count as `NotPaired` for colour, but keep their
 label parts). `Unavailable` contributes nothing.
 
-`HotkeyBinding`: `int Key` (a Windows virtual-key code, 0 = none), `HotkeyMouse Mouse` (`None`,
-`Button4`, `Button5`), `bool Ctrl, Shift, Alt`. At most one of `Key` / `Mouse` is set. `IsEmpty`,
-`IsHeld(Func<int, bool> keyDown, Func<HotkeyMouse, bool> mouseDown, bool ctrl, bool shift,
-bool alt)`, and `Display(Func<int, string> keyName)` giving text such as `Ctrl+F` or
-`Shift+Mouse 4`. The test project compiles `Core/*.cs` without a Dalamud reference, so the key
-is a plain `int`; `PauseHotkey` converts to and from Dalamud's `VirtualKey` and supplies key
-names (`VirtualKey.GetFancyName()`).
+`HotkeyBinding`: `int Key` (a Windows virtual-key code, 0 = none; `0x05` / `0x06` are Mouse 4 /
+Mouse 5), `bool Ctrl, Shift, Alt`. `IsEmpty`, `IsMouse`, `IsHeld(Func<int, bool> down)` (checks
+the main key and that each modifier's state matches exactly), and `Display(Func<int, string>
+keyName)` giving text such as `Ctrl+F` or `Shift+Mouse 4`. The test project compiles `Core/*.cs`
+without a Dalamud reference, so the key is a plain `int`; `PauseHotkey` converts to Dalamud's
+`VirtualKey` for hiding and supplies key names (`VirtualKey.GetFancyName()`).
 
 ### ISyncService
 
