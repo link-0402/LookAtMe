@@ -47,6 +47,9 @@ public abstract class ReflectedSyncService : ISyncService
 
     /// <summary>Resolves and stores every member the adapter needs; throws <see cref="MissingMemberException"/> on any gap.</summary>
     protected abstract void Bind(object plugin);
+
+    /// <summary>Drops every reference Bind stored, so an unloaded plugin's objects and assembly can be freed.</summary>
+    protected abstract void Unbind();
     protected abstract bool IsConnected { get; }
     protected abstract object? FindPair(nint address);
     protected abstract bool IsPaused(object pair);
@@ -94,6 +97,7 @@ public abstract class ReflectedSyncService : ISyncService
 
     public void Reconnect()
     {
+        Unbind();
         bound = null;
         failed = null;
         missing = null;
@@ -126,6 +130,8 @@ public abstract class ReflectedSyncService : ISyncService
         if (!ReferenceEquals(plugin, bound))
         {
             cache.Clear();
+            Unbind();
+            bound = null;
             try
             {
                 Bind(plugin);
@@ -133,7 +139,7 @@ public abstract class ReflectedSyncService : ISyncService
             }
             catch (Exception e)
             {
-                bound = null;
+                Unbind();
                 failed = plugin;
                 missing = SyncReflection.Unwrap(e).Message;
                 status = new(SyncServiceStatusKind.Unavailable, missing);

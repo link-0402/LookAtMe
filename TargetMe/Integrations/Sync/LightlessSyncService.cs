@@ -44,6 +44,20 @@ public sealed class LightlessSyncService : ReflectedSyncService
         api = newApi;
     }
 
+    protected override void Unbind()
+    {
+        pairManager = null!;
+        api = null!;
+        hashCid = null!;
+        enumeratePairs = null!;
+        matchesKnownIdent = null!;
+        pauseAsync = null!;
+        unpauseAsync = null!;
+        isPaused = null!;
+        userData = null!;
+        isConnected = null!;
+    }
+
     protected override bool IsConnected => isConnected.GetValue(api) is true;
 
     protected override object? FindPair(nint address)

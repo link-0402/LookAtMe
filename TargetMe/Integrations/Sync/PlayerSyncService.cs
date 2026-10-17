@@ -61,6 +61,21 @@ public sealed class PlayerSyncService : ReflectedSyncService
         api = newApi;
     }
 
+    protected override void Unbind()
+    {
+        pairManager = null!;
+        api = null!;
+        manualReason = null!;
+        hashCid = null!;
+        allClientPairs = null!;
+        pauseAsync = null!;
+        unPauseAsync = null;
+        ident = null!;
+        isPaused = null!;
+        userData = null!;
+        isConnected = null!;
+    }
+
     protected override bool IsConnected => isConnected.GetValue(api) is true;
 
     protected override bool CanUnpause => unPauseAsync != null;

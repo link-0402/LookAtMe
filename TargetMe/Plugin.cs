@@ -99,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         EmoteWatcher.Dispose();
         Tracker.ViewerStarted -= SoundAlert.OnViewerStarted;
         PauseHotkey.Dispose();
+        ReconnectSyncServices();
         windowSystem.RemoveAllWindows();
         Tracker.Dispose();
     }
@@ -118,8 +119,12 @@ public sealed class Plugin : IDalamudPlugin
 
     private void ToggleViewerWindow() => ViewerWindow.Toggle();
 
-    // A sync plugin was loaded, unloaded or updated: rebind on next use.
-    private void OnPluginsChanged(IActivePluginsChangedEventArgs args)
+    // A sync plugin was loaded, unloaded or updated: rebind on next use. Dalamud may raise this off the
+    // framework thread, and the services are only ever touched from it.
+    private void OnPluginsChanged(IActivePluginsChangedEventArgs args) =>
+        Services.Framework.RunOnFrameworkThread(ReconnectSyncServices);
+
+    private void ReconnectSyncServices()
     {
         foreach (var service in SyncServices)
             service.Reconnect();
