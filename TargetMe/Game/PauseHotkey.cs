@@ -22,6 +22,9 @@ namespace TargetMe.Game;
 public sealed class PauseHotkey : IDisposable
 {
     private const int KeyDownBit = 0x8000;
+    private const int VkEscape = 0x1B;
+    private const int VkMouse4 = 0x05;
+    private const int VkMouse5 = 0x06;
 
     private static nint gameWindow;
 
@@ -34,6 +37,7 @@ public sealed class PauseHotkey : IDisposable
     private IPlayerCharacter? target;
     private IPlayerCharacter? previewTarget;
     private IReadOnlyList<SyncPluginState>? previewStates;
+    private bool awaitingRelease;
     private bool disposed;
 
     public PauseHotkey(Configuration config, ViewerTracker tracker, ViewerWindow viewerWindow,
@@ -56,7 +60,12 @@ public sealed class PauseHotkey : IDisposable
     public void Update()
     {
         var binding = config.PauseHotkey;
-        var released = hold.Update(binding.IsHeld(IsDown), IsActive(binding));
+        var held = binding.IsHeld(IsDown);
+
+        // A key just recorded in settings is still down; it only counts after it's been let go.
+        if (awaitingRelease && !held)
+            awaitingRelease = false;
+        var released = hold.Update(held, !awaitingRelease && IsActive(binding));
 
         // Keep the game from acting on the key while it's ours. Mouse buttons aren't in its key array.
         if (hold.Holding && !binding.IsMouse && Services.KeyState.IsVirtualKeyValid((VirtualKey)binding.Key))
@@ -115,6 +124,45 @@ public sealed class PauseHotkey : IDisposable
         previewTarget = target;
         previewStates = states;
     }
+
+    /// <summary>
+    /// While capturing: the first non-modifier key (or Mouse 4/5) that's down, with the current modifiers.
+    /// Esc cancels. Returns null while nothing is pressed yet, and after cancelling.
+    /// </summary>
+    public HotkeyBinding? PollCapture()
+    {
+        if (IsDown(VkEscape))
+        {
+            Capturing = false;
+            return null;
+        }
+
+        foreach (var vk in CaptureCandidates())
+        {
+            if (!IsDown(vk))
+                continue;
+
+            Capturing = false;
+            awaitingRelease = true;
+            return new HotkeyBinding
+            {
+                Key = vk,
+                Ctrl = IsDown(HotkeyBinding.VkControl),
+                Shift = IsDown(HotkeyBinding.VkShift),
+                Alt = IsDown(HotkeyBinding.VkMenu),
+            };
+        }
+
+        return null;
+    }
+
+    // Keyboard keys the game knows, plus the mouse side buttons; never the left/right/middle button, Esc or a modifier.
+    private static IEnumerable<int> CaptureCandidates() =>
+        Services.KeyState.GetValidVirtualKeys()
+            .Select(k => (int)k)
+            .Concat([VkMouse4, VkMouse5])
+            .Where(vk => vk > 0x04 && vk != VkEscape && !HotkeyBinding.IsModifier(vk))
+            .Distinct();
 
     /// <summary>Whether a key (virtual-key code) is down, and only while the game window is in front.</summary>
     public static bool IsDown(int vk)

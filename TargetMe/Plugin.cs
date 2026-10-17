@@ -65,7 +65,7 @@ public sealed class Plugin : IDalamudPlugin
         SoundAlert = new SoundAlert(Config, () => ViewerWindow.IsOpen);
         Tracker.ViewerStarted += SoundAlert.OnViewerStarted;
 
-        SettingsWindow = new SettingsWindow(Config, SoundAlert, EmoteWatcher, Camera, moodles);
+        SettingsWindow = new SettingsWindow(Config, SoundAlert, EmoteWatcher, Camera, moodles, PauseHotkey, SyncServices);
         windowSystem.AddWindow(SettingsWindow);
         ViewerWindow.OpenSettings = SettingsWindow.Toggle;
 

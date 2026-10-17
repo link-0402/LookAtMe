@@ -24,7 +24,26 @@ public abstract class ReflectedSyncService : ISyncService
     }
 
     public string Name { get; }
-    public SyncServiceStatus Status { get; private set; } = new(SyncServiceStatusKind.NotLoaded);
+
+    /// <summary>Re-checked on every read, so settings show the plugin's current state.</summary>
+    public SyncServiceStatus Status
+    {
+        get
+        {
+            try
+            {
+                EnsureBound();
+            }
+            catch (Exception e)
+            {
+                Services.Log.Debug(SyncReflection.Unwrap(e), $"{Name}: status check failed");
+            }
+
+            return status;
+        }
+    }
+
+    private SyncServiceStatus status = new(SyncServiceStatusKind.NotLoaded);
 
     /// <summary>Resolves and stores every member the adapter needs; throws <see cref="MissingMemberException"/> on any gap.</summary>
     protected abstract void Bind(object plugin);
@@ -41,7 +60,7 @@ public abstract class ReflectedSyncService : ISyncService
         {
             if (!EnsureBound())
                 return SyncState.Unavailable;
-            if (Status.Kind != SyncServiceStatusKind.Connected)
+            if (status.Kind != SyncServiceStatusKind.Connected)
                 return SyncState.Offline;
             return fresh ? ReadState(player.Address) : cache.Get(player.GameObjectId, DateTime.Now, () => ReadState(player.Address));
         }
@@ -56,7 +75,7 @@ public abstract class ReflectedSyncService : ISyncService
     {
         try
         {
-            if (!EnsureBound() || Status.Kind != SyncServiceStatusKind.Connected)
+            if (!EnsureBound() || status.Kind != SyncServiceStatusKind.Connected)
                 throw new InvalidOperationException($"{Name} isn't connected.");
             if (!paused && !CanUnpause)
                 throw new InvalidOperationException($"{Name}'s unpause isn't available on this version.");
@@ -97,7 +116,7 @@ public abstract class ReflectedSyncService : ISyncService
         if (plugin == null)
         {
             Reconnect();
-            Status = new(SyncServiceStatusKind.NotLoaded);
+            status = new(SyncServiceStatusKind.NotLoaded);
             return false;
         }
 
@@ -117,13 +136,13 @@ public abstract class ReflectedSyncService : ISyncService
                 bound = null;
                 failed = plugin;
                 missing = SyncReflection.Unwrap(e).Message;
-                Status = new(SyncServiceStatusKind.Unavailable, missing);
+                status = new(SyncServiceStatusKind.Unavailable, missing);
                 Services.Log.Warning($"{Name} sync pause is unavailable on this version: {missing}");
                 return false;
             }
         }
 
-        Status = new(IsConnected ? SyncServiceStatusKind.Connected : SyncServiceStatusKind.Disconnected);
+        status = new(IsConnected ? SyncServiceStatusKind.Connected : SyncServiceStatusKind.Disconnected);
         return true;
     }
 }

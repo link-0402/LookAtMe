@@ -1,14 +1,19 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using TargetMe.Alerts;
+using TargetMe.Core;
 using TargetMe.Game;
 using TargetMe.Integrations;
+using TargetMe.Integrations.Sync;
 using TargetMe.Tracking;
 
 namespace TargetMe.UI;
@@ -22,12 +27,14 @@ public sealed class SettingsWindow : Window
     private readonly EmoteWatcher emotes;
     private readonly CameraFocus camera;
     private readonly MoodlesIpc moodles;
+    private readonly PauseHotkey pauseHotkey;
+    private readonly IReadOnlyList<ISyncService> syncServices;
     private readonly FileDialogManager fileDialog = new();
     private string editedSoundPath = string.Empty;
     private bool soundPathActive;
 
     public SettingsWindow(Configuration config, SoundAlert sound, EmoteWatcher emotes, CameraFocus camera,
-        MoodlesIpc moodles)
+        MoodlesIpc moodles, PauseHotkey pauseHotkey, IReadOnlyList<ISyncService> syncServices)
         : base("TargetMe Settings##TargetMeSettings", ImGuiWindowFlags.NoCollapse)
     {
         this.config = config;
@@ -35,6 +42,8 @@ public sealed class SettingsWindow : Window
         this.emotes = emotes;
         this.camera = camera;
         this.moodles = moodles;
+        this.pauseHotkey = pauseHotkey;
+        this.syncServices = syncServices;
         Size = new Vector2(580, 430);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
@@ -57,6 +66,9 @@ public sealed class SettingsWindow : Window
 
         ImGui.EndTabBar();
     }
+
+    // Closing settings mid-capture (Esc closes the window too) must not leave the hotkey switched off.
+    public override void OnClose() => pauseHotkey.Capturing = false;
 
     private static void Tab(string label, Action draw)
     {
@@ -229,9 +241,55 @@ public sealed class SettingsWindow : Window
 
     private void DrawIntegrations()
     {
+        DrawSyncPause();
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
         ImGui.TextUnformatted("Moodles");
         ImGui.TextDisabled(moodles.Available ? "Loaded: \"View Moodles\" shows in the menu for players with statuses." : "Moodles not loaded");
     }
+
+    private void DrawSyncPause()
+    {
+        ImGui.TextUnformatted("Sync pause");
+        ImGui.TextWrapped("Hold the hotkey over a player to see their sync state. Release to pause them, or to unpause after a confirmation.");
+        ImGui.Spacing();
+
+        var label = pauseHotkey.Capturing
+            ? "Press a key… (Esc cancels)"
+            : config.PauseHotkey.Display(vk => ((VirtualKey)vk).GetFancyName());
+        if (ImGui.Button($"{label}###pauseHotkey", new Vector2(200 * ImGuiHelpers.GlobalScale, 0)))
+            pauseHotkey.Capturing = true;
+        ImGui.SameLine();
+        if (ImGui.Button("Clear###pauseHotkeyClear"))
+        {
+            pauseHotkey.Capturing = false;
+            Save(() => config.PauseHotkey = new HotkeyBinding());
+        }
+
+        ImGui.SameLine();
+        ImGui.TextUnformatted("Hotkey");
+
+        if (pauseHotkey.Capturing && pauseHotkey.PollCapture() is { } captured)
+            Save(() => config.PauseHotkey = captured);
+        if (config.PauseHotkey.IsMouse)
+            ImGui.TextDisabled("Mouse buttons also reach the game.");
+
+        Color("Pause", config.PauseColor, v => config.PauseColor = v);
+        Color("Unpause", config.UnpauseColor, v => config.UnpauseColor = v);
+        Color("Not paired", config.NotPairedColor, v => config.NotPairedColor = v);
+
+        foreach (var service in syncServices)
+            ImGui.TextDisabled($"{service.Name}: {StatusText(service.Status)}");
+    }
+
+    private static string StatusText(SyncServiceStatus status) => status.Kind switch
+    {
+        SyncServiceStatusKind.Connected => "Connected",
+        SyncServiceStatusKind.Disconnected => "Disconnected",
+        SyncServiceStatusKind.NotLoaded => "Not loaded",
+        _ => $"Unavailable on this version (missing: {status.Missing})",
+    };
 
     private static readonly string[] SoundEffectNames =
     [
