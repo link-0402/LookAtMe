@@ -7,7 +7,7 @@ using Dalamud.Interface.Windowing;
 
 namespace TargetMe.UI;
 
-/// <summary>Asks before unpausing someone through the sync pause hotkey. Esc closes it (Dalamud's close hotkey).</summary>
+/// <summary>Asks before unpausing someone through the sync pause hotkey. Esc cancels.</summary>
 public sealed class UnpauseConfirmWindow : Window
 {
     private ulong objectId;
@@ -36,8 +36,9 @@ public sealed class UnpauseConfirmWindow : Window
 
     public override void PreDraw()
     {
+        // Every frame, not just on appearing: auto-resize widens it after the first frame.
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(viewport.Pos + viewport.Size / 2, ImGuiCond.Appearing, new Vector2(0.5f));
+        ImGui.SetNextWindowPos(viewport.Pos + viewport.Size / 2, ImGuiCond.Always, new Vector2(0.5f));
         if (justOpened)
         {
             ImGui.SetNextWindowFocus();
@@ -57,7 +58,8 @@ public sealed class UnpauseConfirmWindow : Window
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Cancel"))
+        if (ImGui.Button("Cancel")
+            || (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && ImGui.IsKeyPressed(ImGuiKey.Escape)))
             IsOpen = false;
     }
 }
