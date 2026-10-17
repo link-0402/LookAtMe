@@ -7,6 +7,7 @@ A Dalamud plugin for FFXIV that shows who is looking at you.
 - **Hover a name to find them:** a line from you to them, a ring at their feet and a marker over their head. If they're off-screen, an arrow at the screen edge points their way. Your focus target is never touched.
 - **Right-click a name:** Send Tell (readies `/tell` in your chat input, Chat 2 included), Target, Focus Camera (the camera orbits them, TargetZoom-style), Dote, Examine, Adventure Plate, the game's context menu, View Moodles and Copy Name.
 - **Optional alerts:** a game sound or your own sound file, a quiet time per player, and muting in duties.
+- **Sync pause hotkey** (set it in settings → Integrations): hold it over any player to see whether you sync with them in Lightless Sync or PlayerSync, and release to pause them. If they're already paused, releasing asks before unpausing them. Neither plugin offers a public way to do this, so TargetMe reaches into their internals, and an update to either of them can switch this off until TargetMe is updated. Settings show whether each one is connected.
 
 The window is locked in place. Turn on "Allow moving and resizing" in settings (or use `/targetme move`) to drag or resize it, then lock it again.
 
@@ -31,7 +32,7 @@ The window is locked in place. Turn on "Allow moving and resizing" in settings (
 dotnet test TargetMe.Tests
 ```
 
-The unit tests cover the logic that doesn't need the game: list ordering and cap, same-name rows, emote chips, cooldowns, relative times, overlay geometry, the Esc gate, the fallback `/tell` command and the Moodles cache.
+The unit tests cover the logic that doesn't need the game: list ordering and cap, same-name rows, emote chips, cooldowns, relative times, overlay geometry, the Esc gate, the fallback `/tell` command, the Moodles cache, hotkey matching, the hotkey's press/release handling and the sync pause rules.
 
 ### Checks in game
 
@@ -48,3 +49,15 @@ These need a second player, so check them yourself:
 - [ ] While focused, open the chat input and press Esc: the chat closes, but camera focus keeps going.
 - [ ] With sound on, the alert plays when they start targeting you.
 - [ ] The settings cog appears in the list's top-right corner while you hover the list.
+
+#### Sync pause hotkey
+
+Checked through XIV Bridge (Lightless 3.3.0.0, PlayerSync 1.15.5.9, both disconnected): both plugins' internals resolve, the marker draws in all three colours with its label, the unpause popup is centred and closes on Cancel and Esc, and the settings section records a hotkey. Nobody was paused or unpaused during those checks. These need paired players online:
+
+- [ ] Holding the hotkey over a synced pair shows the pause colour and `Pause · …`; releasing pauses them. Check in Lightless and in PlayerSync.
+- [ ] Same for someone you only share a syncshell with, in each plugin.
+- [ ] Releasing over a paused pair opens the popup; Unpause unpauses them, Cancel doesn't.
+- [ ] **PlayerSync:** a paused, online pair is still found (the label says `Unpause… · PlayerSync`, not `Not paired`).
+- [ ] The bound key doesn't do its in-game action while you hold it.
+- [ ] Opening chat mid-hold and releasing does nothing.
+- [ ] Holding over one pair, moving to another and releasing acts on the second one only.
