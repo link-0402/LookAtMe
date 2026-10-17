@@ -13,6 +13,7 @@ public abstract class ReflectedSyncService : ISyncService
 {
     private readonly string internalName;
     private readonly TimedCache<ulong, SyncState> cache = new(TimeSpan.FromMilliseconds(250));
+    private readonly StaleCache<object> instance = new();
     private object? bound;
     private object? failed;
     private string? missing;
@@ -25,7 +26,7 @@ public abstract class ReflectedSyncService : ISyncService
 
     public string Name { get; }
 
-    /// <summary>Re-checked on every read, so settings show the plugin's current state.</summary>
+    /// <summary>The connection is re-checked on every read, so settings show the plugin's current state.</summary>
     public SyncServiceStatus Status
     {
         get
@@ -78,7 +79,7 @@ public abstract class ReflectedSyncService : ISyncService
     {
         try
         {
-            if (!EnsureBound() || status.Kind != SyncServiceStatusKind.Connected)
+            if (!EnsureBound(rescan: true) || status.Kind != SyncServiceStatusKind.Connected)
                 throw new InvalidOperationException($"{Name} isn't connected.");
             if (!paused && !CanUnpause)
                 throw new InvalidOperationException($"{Name}'s unpause isn't available on this version.");
@@ -97,6 +98,12 @@ public abstract class ReflectedSyncService : ISyncService
 
     public void Reconnect()
     {
+        instance.Invalidate();
+        Forget();
+    }
+
+    private void Forget()
+    {
         Unbind();
         bound = null;
         failed = null;
@@ -113,13 +120,16 @@ public abstract class ReflectedSyncService : ISyncService
         return SyncState.Synced;
     }
 
-    /// <summary>Makes sure the members are bound to the plugin instance that's loaded right now.</summary>
-    private bool EnsureBound()
+    /// <summary>
+    /// Makes sure the members are bound to the loaded plugin instance. Finding it allocates, so it's looked up
+    /// again only after <see cref="Reconnect"/> (the plugin list changed) or when <paramref name="rescan"/> asks.
+    /// </summary>
+    private bool EnsureBound(bool rescan = false)
     {
-        var plugin = SyncReflection.FindPluginInstance(internalName);
+        var plugin = instance.Get(() => SyncReflection.FindPluginInstance(internalName), rescan);
         if (plugin == null)
         {
-            Reconnect();
+            Forget();
             status = new(SyncServiceStatusKind.NotLoaded);
             return false;
         }
