@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+    <PropertyGroup>
+        <Authors>Luci</Authors>
+        <Version>1.0.0.0</Version>
+        <AssemblyName>LookAtMe</AssemblyName>
+        <Description>See who's looking at you: a clean list of everyone targeting your character, the emotes they aim at you, and quick ways to find, tell or watch them.</Description>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="NAudio" Version="2.2.1" />
+    </ItemGroup>
+</Project>
