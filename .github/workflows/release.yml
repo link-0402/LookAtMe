@@ -1,0 +1,74 @@
+name: Release plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Check that the tag matches the plugin version
+        shell: pwsh
+        run: |
+          $project = [xml](Get-Content -LiteralPath 'LookAtMe/LookAtMe.csproj' -Raw)
+          $version = ($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
+          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -ne $tag -and $version -ne "$tag.0") {
+            throw "The tag v$tag does not match the plugin version $version in LookAtMe/LookAtMe.csproj."
+          }
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Dalamud SDK
+        shell: pwsh
+        run: |
+          $dalamudHome = Join-Path $env:AppData 'XIVLauncher\addon\Hooks\dev'
+          $archive = Join-Path $env:RUNNER_TEMP 'dalamud.zip'
+          New-Item -ItemType Directory -Force -Path $dalamudHome | Out-Null
+          Invoke-WebRequest -Uri 'https://goatcorp.github.io/dalamud-distrib/latest.zip' -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath $dalamudHome -Force
+
+      - name: Restore dependencies
+        run: dotnet restore LookAtMe.sln
+
+      - name: Build
+        run: dotnet build LookAtMe.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test LookAtMe.Tests --configuration Release --no-build
+
+      - name: Prepare release asset
+        shell: pwsh
+        run: |
+          $artifactDirectory = Join-Path $PWD 'release-assets'
+          New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
+          $package = @(
+            'LookAtMe/bin/x64/Release/LookAtMe/latest.zip',
+            'LookAtMe/bin/Release/LookAtMe/latest.zip'
+          ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $package) {
+            throw 'Dalamud package was not produced.'
+          }
+          Copy-Item -LiteralPath $package -Destination (Join-Path $artifactDirectory 'LookAtMe.zip') -Force
+          Copy-Item -LiteralPath $package -Destination (Join-Path $artifactDirectory 'latest.zip') -Force
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/LookAtMe.zip
+            release-assets/latest.zip
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
