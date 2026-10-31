@@ -27,6 +27,9 @@ public interface ISyncService
     /// <summary>Pauses or unpauses the player's pair. Failures come back as a faulted task, never as a throw.</summary>
     Task SetPaused(IPlayerCharacter player, bool paused);
 
+    /// <summary>Blocks the player the way the plugin's own block item does; this unpairs them. Failures as for <see cref="SetPaused"/>.</summary>
+    Task Block(IPlayerCharacter player);
+
     /// <summary>Forgets the bound plugin instance; the next call finds and binds it again.</summary>
     void Reconnect();
 }

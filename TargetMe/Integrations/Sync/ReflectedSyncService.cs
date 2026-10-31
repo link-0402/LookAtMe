@@ -56,7 +56,9 @@ public abstract class ReflectedSyncService : ISyncService
     protected abstract bool IsPaused(object pair);
     protected abstract Task Pause(object pair);
     protected abstract Task Unpause(object pair);
+    protected abstract Task Block(object pair);
     protected virtual bool CanUnpause => true;
+    protected virtual bool CanBlock => true;
 
     public SyncState GetState(IPlayerCharacter player, bool fresh = false)
     {
@@ -75,16 +77,22 @@ public abstract class ReflectedSyncService : ISyncService
         }
     }
 
-    public Task SetPaused(IPlayerCharacter player, bool paused)
+    public Task SetPaused(IPlayerCharacter player, bool paused) =>
+        OnPair(player, paused ? Pause : Unpause, paused || CanUnpause ? null : "unpause");
+
+    public Task Block(IPlayerCharacter player) => OnPair(player, Block, CanBlock ? null : "block");
+
+    /// <param name="unavailable">The action's name when this plugin version lacks it.</param>
+    private Task OnPair(IPlayerCharacter player, Func<object, Task> action, string? unavailable)
     {
         try
         {
             if (!EnsureBound(rescan: true) || status.Kind != SyncServiceStatusKind.Connected)
                 throw new InvalidOperationException($"{Name} isn't connected.");
-            if (!paused && !CanUnpause)
-                throw new InvalidOperationException($"{Name}'s unpause isn't available on this version.");
+            if (unavailable != null)
+                throw new InvalidOperationException($"{Name}'s {unavailable} isn't available on this version.");
             var pair = FindPair(player.Address) ?? throw new InvalidOperationException($"{Name}: pair not found.");
-            return paused ? Pause(pair) : Unpause(pair);
+            return action(pair);
         }
         catch (Exception e)
         {

@@ -16,9 +16,10 @@ public sealed class ViewerContextMenu
     private readonly MoodlesIpc moodles;
     private readonly MoodlesPopup moodlesPopup;
     private readonly CameraFocus camera;
+    private readonly MessengerIpc messenger;
 
     public ViewerContextMenu(Configuration config, ViewerTracker tracker, PlayerActions actions, MoodlesIpc moodles,
-        MoodlesPopup moodlesPopup, CameraFocus camera)
+        MoodlesPopup moodlesPopup, CameraFocus camera, MessengerIpc messenger)
     {
         this.config = config;
         this.tracker = tracker;
@@ -26,6 +27,7 @@ public sealed class ViewerContextMenu
         this.moodles = moodles;
         this.moodlesPopup = moodlesPopup;
         this.camera = camera;
+        this.messenger = messenger;
     }
 
     public void Draw(ViewerRecord record)
@@ -38,6 +40,9 @@ public sealed class ViewerContextMenu
 
         if (ImGui.MenuItem("Send Tell"))
             TellLauncher.Open(record);
+        if (config.MenuMessenger && messenger.Available
+            && ImGui.MenuItem("Open in Messenger", string.Empty, false, MessengerIpc.CanOpen(record)))
+            messenger.Open(record);
         if (ImGui.MenuItem("Target", string.Empty, false, loaded))
             actions.Target(record);
         if (camera.Available)

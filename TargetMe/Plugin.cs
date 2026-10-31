@@ -44,7 +44,7 @@ public sealed class Plugin : IDalamudPlugin
         var moodles = new MoodlesIpc();
         var moodlesPopup = new MoodlesPopup(moodles, Tracker);
         Camera = new CameraFocus(Config, Tracker);
-        ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup, Camera);
+        ContextMenu = new ViewerContextMenu(Config, Tracker, actions, moodles, moodlesPopup, Camera, new MessengerIpc());
 
         EmoteWatcher = new EmoteWatcher(Config, Tracker);
         var chipView = new EmoteChipView(Config);

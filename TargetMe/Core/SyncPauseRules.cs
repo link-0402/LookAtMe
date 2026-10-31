@@ -25,6 +25,7 @@ public enum MarkerKind
     NotPaired,
 }
 
+/// <param name="Pause">The plugins to pause the player in, or to block them in when blocking.</param>
 public sealed record ReleaseAction(IReadOnlyList<string> Pause, IReadOnlyList<string> ConfirmUnpause);
 
 /// <summary>What the pause marker shows and what releasing the hotkey does, from each sync plugin's state.</summary>
@@ -32,22 +33,24 @@ public static class SyncPauseRules
 {
     private const string Separator = "   ";
 
-    public static MarkerKind Marker(IReadOnlyList<SyncPluginState> states)
+    /// <param name="block">Release blocks instead of pausing: paused pairs get blocked too, never unpaused.</param>
+    public static MarkerKind Marker(IReadOnlyList<SyncPluginState> states, bool block = false)
     {
-        if (states.Any(s => s.State == SyncState.Synced))
+        if (states.Any(s => s.State == SyncState.Synced || (block && s.State == SyncState.Paused)))
             return MarkerKind.Pause;
         if (states.Any(s => s.State == SyncState.Paused))
             return MarkerKind.Unpause;
         return MarkerKind.NotPaired;
     }
 
-    public static string Label(IReadOnlyList<SyncPluginState> states)
+    public static string Label(IReadOnlyList<SyncPluginState> states, bool block = false)
     {
         var parts = new List<string>();
         foreach (var (plugin, state) in states)
         {
             var part = state switch
             {
+                SyncState.Synced or SyncState.Paused when block => $"Block · {plugin}",
                 SyncState.Synced => $"Pause · {plugin}",
                 SyncState.Paused => $"Unpause… · {plugin}",
                 SyncState.Offline => $"{plugin} offline",
@@ -61,9 +64,9 @@ public static class SyncPauseRules
         return parts.Count == 0 ? "Not paired" : string.Join(Separator, parts);
     }
 
-    public static ReleaseAction OnRelease(IReadOnlyList<SyncPluginState> states) => new(
-        states.Where(s => s.State == SyncState.Synced).Select(s => s.Plugin).ToList(),
-        states.Where(s => s.State == SyncState.Paused).Select(s => s.Plugin).ToList());
+    public static ReleaseAction OnRelease(IReadOnlyList<SyncPluginState> states, bool block = false) => new(
+        states.Where(s => s.State == SyncState.Synced || (block && s.State == SyncState.Paused)).Select(s => s.Plugin).ToList(),
+        block ? [] : states.Where(s => s.State == SyncState.Paused).Select(s => s.Plugin).ToList());
 
     /// <summary>The requested plugins whose fresh state is still Paused, in requested order.</summary>
     public static IReadOnlyList<string> StillPaused(IReadOnlyList<SyncPluginState> fresh, IReadOnlyList<string> requested) =>

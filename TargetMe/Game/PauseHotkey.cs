@@ -17,6 +17,7 @@ namespace TargetMe.Game;
 /// <summary>
 /// The sync pause hotkey: while held, marks the player under the cursor with their sync state;
 /// on release, pauses them where they're synced and asks before unpausing them where they're paused.
+/// With "block instead of pause" on, release blocks them wherever they're synced or paused.
 /// </summary>
 public sealed class PauseHotkey : IDisposable
 {
@@ -97,7 +98,7 @@ public sealed class PauseHotkey : IDisposable
             states = States(target, fresh: false);
         }
 
-        var color = SyncPauseRules.Marker(states) switch
+        var color = SyncPauseRules.Marker(states, config.PauseBlocks) switch
         {
             MarkerKind.Pause => config.PauseColor,
             MarkerKind.Unpause => config.UnpauseColor,
@@ -109,7 +110,7 @@ public sealed class PauseHotkey : IDisposable
             Line = false,
             Ring = true,
             Marker = true,
-            Label = SyncPauseRules.Label(states),
+            Label = SyncPauseRules.Label(states, config.PauseBlocks),
         });
         HasTarget = true;
     }
@@ -205,10 +206,16 @@ public sealed class PauseHotkey : IDisposable
 
     private void Release(IPlayerCharacter player)
     {
-        var action = SyncPauseRules.OnRelease(States(player, fresh: true));
+        var block = config.PauseBlocks;
+        var action = SyncPauseRules.OnRelease(States(player, fresh: true), block);
         var name = player.Name.TextValue;
         foreach (var plugin in action.Pause)
-            Report(Service(plugin).SetPaused(player, true), $"Paused {name} ({plugin})", $"Couldn't pause {name} in {plugin}");
+        {
+            if (block)
+                Report(Service(plugin).Block(player), $"Blocked {name} ({plugin})", $"Couldn't block {name} in {plugin}");
+            else
+                Report(Service(plugin).SetPaused(player, true), $"Paused {name} ({plugin})", $"Couldn't pause {name} in {plugin}");
+        }
 
         if (action.ConfirmUnpause.Count > 0)
             confirm.Open(player, action.ConfirmUnpause);

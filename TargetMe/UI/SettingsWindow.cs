@@ -156,6 +156,7 @@ public sealed class SettingsWindow : Window
         Checkbox("Adventure Plate", config.MenuAdventurePlate, v => config.MenuAdventurePlate = v);
         Checkbox("Game Context Menu", config.MenuGameMenu, v => config.MenuGameMenu = v);
         Checkbox("View Moodles", config.MenuMoodles, v => config.MenuMoodles = v);
+        Checkbox("Open in Messenger (XIV Instant Messenger)", config.MenuMessenger, v => config.MenuMessenger = v);
     }
 
     private void DrawSound()
@@ -285,6 +286,9 @@ public sealed class SettingsWindow : Window
             Save(() => config.PauseHotkey = captured);
         if (config.PauseHotkey.IsMouse)
             ImGui.TextDisabled("Mouse buttons also reach the game.");
+
+        Checkbox("Block instead of pause", config.PauseBlocks, v => config.PauseBlocks = v,
+            "Release blocks the player, whether synced or paused: \"Block Pairing\" in PlayerSync (keeps them paused and removes the pair) and \"Blacklist Pair\" in Lightless. The hotkey can't undo it; unblock them in the sync plugin.");
 
         Color("Pause", config.PauseColor, v => config.PauseColor = v);
         Color("Unpause", config.UnpauseColor, v => config.UnpauseColor = v);

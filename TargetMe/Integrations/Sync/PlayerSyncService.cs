@@ -15,6 +15,7 @@ public sealed class PlayerSyncService : ReflectedSyncService
     private FieldInfo allClientPairs = null!;
     private MethodInfo pauseAsync = null!;
     private MethodInfo? unPauseAsync;
+    private MethodInfo? stickyPauseAndRemove;
     private PropertyInfo ident = null!;
     private PropertyInfo isPaused = null!;
     private PropertyInfo userData = null!;
@@ -57,6 +58,17 @@ public sealed class PlayerSyncService : ReflectedSyncService
             Services.Log.Warning($"PlayerSync unpause is unavailable on this version: {e.Message}");
         }
 
+        // What its "Block Pairing" item runs; without it the adapter still pauses.
+        try
+        {
+            stickyPauseAndRemove = SyncReflection.Method(apiType, "UserPairStickyPauseAndRemove", userData.PropertyType);
+        }
+        catch (MissingMemberException e)
+        {
+            stickyPauseAndRemove = null;
+            Services.Log.Warning($"PlayerSync block pairing is unavailable on this version: {e.Message}");
+        }
+
         pairManager = newPairManager;
         api = newApi;
     }
@@ -70,6 +82,7 @@ public sealed class PlayerSyncService : ReflectedSyncService
         allClientPairs = null!;
         pauseAsync = null!;
         unPauseAsync = null;
+        stickyPauseAndRemove = null;
         ident = null!;
         isPaused = null!;
         userData = null!;
@@ -79,6 +92,8 @@ public sealed class PlayerSyncService : ReflectedSyncService
     protected override bool IsConnected => isConnected.GetValue(api) is true;
 
     protected override bool CanUnpause => unPauseAsync != null;
+
+    protected override bool CanBlock => stickyPauseAndRemove != null;
 
     protected override object? FindPair(nint address)
     {
@@ -103,4 +118,7 @@ public sealed class PlayerSyncService : ReflectedSyncService
     // notification: false, so PlayerSync doesn't add its own "Auto unpausing" notice next to TargetMe's toast.
     protected override Task Unpause(object pair) =>
         (Task)unPauseAsync!.Invoke(api, [userData.GetValue(pair), false])!;
+
+    protected override Task Block(object pair) =>
+        (Task)stickyPauseAndRemove!.Invoke(api, [userData.GetValue(pair)])!;
 }

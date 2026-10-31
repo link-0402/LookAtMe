@@ -78,6 +78,29 @@ public class SyncPauseRulesTests
         Assert.Equal(expectedConfirm, action.ConfirmUnpause);
     }
 
+    [Theory]
+    [MemberData(nameof(AllPairs))]
+    public void BlockingReleaseBlocksSyncedAndPaused(SyncState l, SyncState p)
+    {
+        var action = SyncPauseRules.OnRelease([L(l), P(p)], block: true);
+
+        var expected = new List<string>();
+        if (l is SyncState.Synced or SyncState.Paused) expected.Add("Lightless");
+        if (p is SyncState.Synced or SyncState.Paused) expected.Add("PlayerSync");
+
+        Assert.Equal(expected, action.Pause);
+        Assert.Empty(action.ConfirmUnpause);
+    }
+
+    [Fact]
+    public void BlockingMarkerAndLabel()
+    {
+        Assert.Equal(MarkerKind.Pause, SyncPauseRules.Marker([L(SyncState.NotPaired), P(SyncState.Paused)], block: true));
+        Assert.Equal(MarkerKind.NotPaired, SyncPauseRules.Marker([L(SyncState.Offline), P(SyncState.PausedCantUnpause)], block: true));
+        Assert.Equal("Block · Lightless   Block · PlayerSync",
+            SyncPauseRules.Label([L(SyncState.Synced), P(SyncState.Paused)], block: true));
+    }
+
     [Fact]
     public void StillPausedSkipsChanged()
     {

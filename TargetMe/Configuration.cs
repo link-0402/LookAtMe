@@ -47,6 +47,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool MenuAdventurePlate { get; set; } = true;
     public bool MenuGameMenu { get; set; } = true;
     public bool MenuMoodles { get; set; } = true;
+    public bool MenuMessenger { get; set; } = true;
 
     // Sound
     public bool SoundEnabled { get; set; } = false;
@@ -67,6 +68,7 @@ public sealed class Configuration : IPluginConfiguration
 
     // Sync pause
     public HotkeyBinding PauseHotkey { get; set; } = new();
+    public bool PauseBlocks { get; set; } = false;
     public Vector4 PauseColor { get; set; } = new(1.0f, 0.31f, 0.64f, 1f);
     public Vector4 UnpauseColor { get; set; } = new(0.30f, 0.90f, 0.45f, 1f);
     public Vector4 NotPairedColor { get; set; } = new(0.55f, 0.55f, 0.55f, 0.8f);
