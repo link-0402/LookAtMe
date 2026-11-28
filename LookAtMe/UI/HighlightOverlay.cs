@@ -15,6 +15,14 @@ public readonly record struct OverlayStyle(
         new(c.OverlayColor, c.OverlayThickness, c.OverlayLine, c.OverlayRing, c.OverlayMarker, c.OverlayPulse);
 }
 
+/// <summary>How the world dot looks.</summary>
+public readonly record struct OverlayDotStyle(
+    Vector4 Color, float Size, bool Pulse)
+{
+    public static OverlayDotStyle From(Configuration c) =>
+        new(c.OverlayDotColor, c.OverlayDotSize, c.OverlayPulse);
+}
+
 /// <summary>
 /// Lights up a player in the world: a line from the local player to them, a ring at their feet,
 /// a marker over their head with an optional label, and an arrow at the screen edge when they're off-screen.
@@ -79,6 +87,28 @@ public sealed class HighlightOverlay
         var inFront = Services.GameGui.WorldToScreen(targetChest, out var projected, out var inView);
         if (!inFront || !inView)
             DrawEdgeArrow(drawList, target.Name.TextValue, projected, !inFront, color);
+    }
+    
+    public void DrawDot(IPlayerCharacter target, OverlayDotStyle style)
+    {
+        var drawList = ImGui.GetBackgroundDrawList();
+        var alpha = style.Pulse ? OverlayGeometry.Pulse(ImGui.GetTime()) : 1f;
+        var color = ImGui.GetColorU32(style.Color with { W = style.Color.W * alpha });
+
+        if (!Services.GameGui.WorldToScreen(target.Position, out var screenPos)) {
+            return;
+        }
+
+        drawList.PushClipRect(ImGuiHelpers.MainViewport.Pos, ImGuiHelpers.MainViewport.Pos + ImGuiHelpers.MainViewport.Size, false);
+
+        drawList.AddCircleFilled(
+            new Vector2(screenPos.X, screenPos.Y),
+            style.Size,
+            ImGui.GetColorU32(color),
+            100
+        );
+
+        drawList.PopClipRect();
     }
 
     private static void DrawWorldPolyline(ImDrawListPtr drawList, Func<int, Vector3> point, int segments, uint color, float thickness)

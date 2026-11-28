@@ -29,13 +29,12 @@ public static class ViewerRow
         var height = ImGui.GetFrameHeight();
         var end = start + new Vector2(width, height);
 
-        if (record.IsTargeting)
-            drawList.AddRectFilled(start, end, ImGui.GetColorU32(config.ActiveColor with { W = 0.12f }), 4f);
-
         var hovered = false;
         if (interactive)
         {
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0f, 0f, 0f, 0));
             ImGui.Selectable("##row", false, ImGuiSelectableFlags.AllowItemOverlap, new Vector2(width, height));
+            ImGui.PopStyleColor();
             hovered = ImGui.IsItemHovered();
             if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 onLeftClick?.Invoke(record);
@@ -46,6 +45,18 @@ public static class ViewerRow
         {
             ImGui.Dummy(new Vector2(width, height));
         }
+
+        Vector4? bgColor = null;
+        
+        if(record.IsTargeting && hovered)
+            bgColor = config.ActiveColor with { W = 0.24f };
+        else if (record.IsTargeting)
+            bgColor = config.ActiveColor with { W = 0.12f };
+        else if(hovered)
+            bgColor = new Vector4(1, 1, 1, 0.24f);
+
+        if (bgColor.HasValue)
+            drawList.AddRectFilled(start, end, ImGui.GetColorU32(bgColor.Value), 4f);
 
         var next = ImGui.GetCursorScreenPos();
 

@@ -135,7 +135,6 @@ public sealed class SettingsWindow : Window
     private void DrawOverlay()
     {
         ImGui.TextWrapped("While you hover a name (or its menu is open), the player is highlighted in the world.");
-        ImGui.Spacing();
         Color("Highlight color", config.OverlayColor, v => config.OverlayColor = v);
         var thickness = config.OverlayThickness;
         ImGui.SetNextItemWidth(200);
@@ -144,6 +143,21 @@ public sealed class SettingsWindow : Window
         Checkbox("Line from you to them", config.OverlayLine, v => config.OverlayLine = v);
         Checkbox("Ring at their feet", config.OverlayRing, v => config.OverlayRing = v);
         Checkbox("Marker over their head", config.OverlayMarker, v => config.OverlayMarker = v);
+        
+        ImGui.Spacing();
+        ImGui.TextWrapped("The dot is always there and can be used to see if a player is targeting you without opening the list.");
+        Checkbox("Hitbox Dot", config.OverlayDot, v => config.OverlayDot = v);
+        if(config.OverlayDot)
+        {
+            Color("Dot color", config.OverlayDotColor, v => config.OverlayDotColor = v);
+            var size = config.OverlayDotSize;
+            ImGui.SetNextItemWidth(200);
+            if (ImGui.SliderFloat("Dot size", ref size, 1f, 8f, "%.1f"))
+                Save(() => config.OverlayDotSize = size);
+        }
+        ImGui.Spacing();
+        ImGui.TextWrapped("The highlight and dot can pulse in and out to make them more visible.");
+
         Checkbox("Gentle pulse", config.OverlayPulse, v => config.OverlayPulse = v);
     }
 

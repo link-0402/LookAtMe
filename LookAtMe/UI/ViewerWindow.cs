@@ -72,11 +72,16 @@ public sealed class ViewerWindow : Window
         }
         else
         {
-            foreach (var row in rows)
+            if (ImGui.BeginChild("##rows"))
             {
-                if (ViewerRow.Draw(row, ViewerList.HasNamesake(rows, row), now, config, !config.WindowUnlocked,
-                        OnLeftClick, DrawEmoteChips, DrawContextMenu))
-                    hovered = row;
+                foreach (var row in rows)
+                {
+                    if (ViewerRow.Draw(row, ViewerList.HasNamesake(rows, row), now, config, !config.WindowUnlocked,
+                            OnLeftClick, DrawEmoteChips, DrawContextMenu))
+                        hovered = row;
+                }
+
+                ImGui.EndChild();
             }
         }
 

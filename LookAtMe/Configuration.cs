@@ -39,6 +39,9 @@ public sealed class Configuration : IPluginConfiguration
     public bool OverlayLine { get; set; } = true;
     public bool OverlayRing { get; set; } = true;
     public bool OverlayMarker { get; set; } = true;
+    public bool OverlayDot { get; set; } = false;
+    public Vector4 OverlayDotColor { get; set; } = new(1.0f, 0f, 0f, 1f);
+    public float OverlayDotSize { get; set; } = 2f;
     public bool OverlayPulse { get; set; } = true;
 
     // Context menu

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -76,6 +77,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.OpenConfigUi += SettingsWindow.Toggle;
         Services.Framework.Update += OnFrameworkUpdate;
         Services.ClientState.Login += OnLogin;
+        Services.ClientState.Logout += OnLogout;
         Services.PluginInterface.ActivePluginsChanged += OnPluginsChanged;
         Services.CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
@@ -93,6 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         Camera.Dispose();
         Services.CommandManager.RemoveHandler(Command);
         Services.ClientState.Login -= OnLogin;
+        Services.ClientState.Logout -= OnLogout;
         Services.PluginInterface.ActivePluginsChanged -= OnPluginsChanged;
         Services.Framework.Update -= OnFrameworkUpdate;
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
@@ -119,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin
             overlay.Draw(target, self, OverlayStyle.From(Config));
 
         DrawSearchMatches(self);
+        DrawDots(self);
     }
 
     private void DrawSearchMatches(IPlayerCharacter self)
@@ -133,6 +137,21 @@ public sealed class Plugin : IDalamudPlugin
             if (obj is IPlayerCharacter pc && pc.GameObjectId != self.GameObjectId
                 && PlayerSearch.Matches(pc.Name.TextValue, query))
                 overlay.Draw(pc, self, style with { Label = pc.Name.TextValue });
+        }
+    }
+    
+    private void DrawDots(IPlayerCharacter self)
+    {
+        if (!Config.OverlayDot)
+            return;
+
+        var style = OverlayDotStyle.From(Config);
+        var visible = ViewerList.Visible(Tracker.All, Config.ListCap).Where(vr => vr.IsTargeting).ToList();
+        foreach (var obj in Services.ObjectTable.PlayerObjects)
+        {
+            if (obj is IPlayerCharacter pc && pc.GameObjectId != self.GameObjectId
+                                           && visible.Any(v => v.GameObjectId == pc.GameObjectId))
+                overlay.DrawDot(pc, style);
         }
     }
 
@@ -153,6 +172,11 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Config.OpenOnLogin)
             ViewerWindow.IsOpen = true;
+    }
+
+    private void OnLogout(int type, int code)
+    {
+        ViewerWindow.IsOpen = false;
     }
 
     private void OnFrameworkUpdate(IFramework framework)
